@@ -1,0 +1,34 @@
+[
+    {
+        "id": 1,
+        "name": "Maria Santos",
+        "email": "admin@gmail.com",
+        "password_hash": "$2y$12$aN06gNq8U1KR0.VhmK4eaOQnEvgOHKUyuJOt.bmr0QnG1LGOwqYLm",
+        "role": "Administrator",
+        "active": true
+    },
+    {
+        "id": 2,
+        "name": "Demo Accountant",
+        "email": "accountant@nexii.ph",
+        "password_hash": "$2y$12$eMtuvZRJyWGqV8I/WcrT8ehfCGl6791hQK5OhGWuB8KRWJfj4bb4K",
+        "role": "Accountant",
+        "active": true
+    },
+    {
+        "id": 3,
+        "name": "Demo Encoder",
+        "email": "encoder@nexii.ph",
+        "password_hash": "$2y$12$eMtuvZRJyWGqV8I/WcrT8ehfCGl6791hQK5OhGWuB8KRWJfj4bb4K",
+        "role": "Encoder / Staff",
+        "active": true
+    },
+    {
+        "id": 4,
+        "name": "Demo Auditor",
+        "email": "viewer@nexii.ph",
+        "password_hash": "$2y$12$eMtuvZRJyWGqV8I/WcrT8ehfCGl6791hQK5OhGWuB8KRWJfj4bb4K",
+        "role": "Viewer / Auditor",
+        "active": true
+    }
+]

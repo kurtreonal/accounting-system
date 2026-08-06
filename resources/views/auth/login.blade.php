@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Sign in to the NEXII Enterprise Accounting System demo.">
+    <meta name="description" content="Sign in to the NEXII Enterprise Accounting System.">
     <title>Sign in | NEXII Accounting</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -33,7 +33,7 @@
                         <div class="stat-card"><strong>4</strong><span>Roles</span></div>
                     </div>
 
-                    <p class="hero-note">Enterprise Accounting System · BIR-Ready · Demo Mode</p>
+                    <p class="hero-note">Enterprise Accounting System</p>
                 </div>
             </div>
         </section>
@@ -69,7 +69,7 @@
                     </div>
 
                     <div class="form-field">
-                        <label for="password">Password</label>
+                        <label for="password">Password</labeDatal>
                         <input
                             id="password"
                             name="password"
@@ -94,7 +94,7 @@
                     <button class="sign-in-button" type="submit">Sign In</button>
                 </form>
 
-                <p class="demo-notice">Demo data only · No real transactions processed</p>
+                <p class="demo-notice">No real transactions processed</p>
             </div>
         </section>
     </main>

@@ -1,147 +1,67 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#111a2f">
-    <title>Dashboard | NEXII Accounting</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-</head>
-<body class="min-h-screen bg-[#f3f7fb] font-sans text-[#142038] antialiased">
-    <div class="min-h-screen lg:pl-60">
-        <aside class="fixed inset-y-0 left-0 z-30 hidden h-dvh w-60 flex-col overflow-hidden bg-[#111a2f] text-slate-300 lg:flex">
-            <div class="flex h-14 shrink-0 items-center gap-2.5 border-b border-white/10 px-3.5">
-                <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-[#2463eb] text-[11px] font-bold tracking-tight text-white shadow-lg shadow-blue-950/30">NX</span>
-                <div class="min-w-0 leading-tight">
-                    <p class="truncate text-sm font-semibold text-white">NEXII Tech Solutions</p>
-                    <p class="text-xs text-slate-500">Accounting System</p>
-                </div>
+@extends('layouts.accounting', ['pageTitle' => 'Dashboard', 'activePage' => 'dashboard'])
+
+@section('content')
+<main class="p-4 sm:p-5">
+    <div class="dashboard-enter">
+        <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-xs text-slate-500"><span>Overview</span><span class="text-slate-300">/</span><span class="font-medium text-slate-700">Dashboard</span></nav>
+        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div><h1 class="text-xl font-bold text-slate-900">Dashboard</h1><p class="mt-1 text-sm text-slate-500">Overview of your business and financial activity</p></div>
+            <div class="flex flex-wrap gap-2">
+                <button type="button" class="apm-outline-button">New Invoice</button>
+                <button type="button" class="apm-primary-button"><svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>New Journal Entry</button>
             </div>
-
-            <nav class="dashboard-scrollbar-hidden min-h-0 flex-1 overflow-y-auto px-2 py-3 text-[12.5px]">
-                <p class="px-2 pb-2 text-[9px] font-bold tracking-[0.15em] text-slate-500 uppercase">Overview</p>
-                <div aria-current="page" class="rounded-lg bg-[#2463eb] px-2.5 py-2 text-white shadow-md shadow-blue-950/20">Dashboard</div>
-
-                <p class="mt-4 px-2 pb-1.5 text-[9px] font-bold tracking-[0.15em] text-slate-500 uppercase">Accounting</p>
-                <span class="dashboard-nav-item">Chart of Accounts</span>
-                <span class="dashboard-nav-item">Journal Entries</span>
-                <span class="dashboard-nav-item">General Ledger</span>
-
-                <p class="mt-4 px-2 pb-1.5 text-[9px] font-bold tracking-[0.15em] text-slate-500 uppercase">Sales &amp; Receivables</p>
-                <span class="dashboard-nav-item">Sales and Revenue</span>
-                <span class="dashboard-nav-item">Accounts Receivable</span>
-
-                <p class="mt-4 px-2 pb-1.5 text-[9px] font-bold tracking-[0.15em] text-slate-500 uppercase">Purchases &amp; Payables</p>
-                <span class="dashboard-nav-item">Accounts Payable</span>
-
-                <p class="mt-4 px-2 pb-1.5 text-[9px] font-bold tracking-[0.15em] text-slate-500 uppercase">Banking</p>
-                <span class="dashboard-nav-item">Cash &amp; Bank</span>
-                <span class="dashboard-nav-item">Expenses</span>
-
-                <p class="mt-4 px-2 pb-1.5 text-[9px] font-bold tracking-[0.15em] text-slate-500 uppercase">Reporting</p>
-                <span class="dashboard-nav-item">Financial Reports</span>
-
-                <p class="mt-4 px-2 pb-1.5 text-[9px] font-bold tracking-[0.15em] text-slate-500 uppercase">Administration</p>
-                <span class="dashboard-nav-item">Tax Settings</span>
-                <span class="dashboard-nav-item">Audit Trail</span>
-                <span class="dashboard-nav-item">Users &amp; Settings</span>
-            </nav>
-
-            <div class="flex h-17 shrink-0 items-center border-t border-white/10 p-3">
-                <div class="flex w-full items-center gap-2.5 rounded-lg p-1 transition-colors hover:bg-white/5">
-                    <span class="grid size-8 shrink-0 place-items-center rounded-full bg-red-600 text-[11px] font-bold text-white">{{ strtoupper(substr($user['name'], 0, 1)) }}</span>
-                    <div class="min-w-0 flex-1">
-                        <p class="truncate text-xs font-medium text-white">{{ $user['name'] }}</p>
-                        <span class="inline-block rounded-full bg-red-50 px-1.5 py-0.5 text-[8px] font-bold text-red-600">{{ $user['role'] }}</span>
-                    </div>
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit" title="Sign out" aria-label="Sign out" class="grid size-8 cursor-pointer place-items-center rounded-lg text-slate-500 transition duration-200 hover:bg-white/10 hover:text-white active:scale-90">
-                            <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6A2.25 2.25 0 0 0 5.25 5.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3-6 3 3m0 0-3 3m3-3H9"/></svg>
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </aside>
-
-        <header class="sticky top-0 z-20 flex h-14 items-center border-b border-slate-200 bg-white/95 px-4 backdrop-blur lg:px-6">
-            <span class="mr-2 grid size-8 place-items-center rounded-lg bg-[#2463eb] text-[11px] font-bold text-white lg:hidden">NX</span>
-            <h1 class="text-sm font-semibold text-slate-700">Dashboard</h1>
-            <div class="ml-auto flex items-center gap-2">
-                <span class="hidden rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-semibold text-red-600 sm:inline">{{ $user['role'] }}</span>
-                <button type="button" aria-label="Toggle dark mode" title="Dark mode" class="grid size-8 cursor-pointer place-items-center rounded-full text-slate-500 transition duration-200 hover:bg-blue-50 hover:text-blue-600 active:rotate-12 active:scale-90">
-                    <svg class="size-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 15.75A9.75 9.75 0 0 1 8.25 2.25a9.75 9.75 0 1 0 13.5 13.5Z"/></svg>
-                </button>
-                <span class="grid size-8 place-items-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-sm">{{ strtoupper(substr($user['name'], 0, 1)) }}</span>
-            </div>
-        </header>
-
-        <main class="mx-auto max-w-[1440px] p-4 sm:p-5 lg:p-6">
-            <section aria-label="Financial summary" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                <article class="dashboard-card dashboard-enter [animation-delay:40ms]">
-                    <p class="text-xs text-slate-500">Cash on Hand</p>
-                    <p class="mt-1.5 font-mono text-xl font-bold tracking-tight text-slate-900">&#8369;0.00</p>
-                </article>
-                <article class="dashboard-card dashboard-enter [animation-delay:80ms]">
-                    <p class="text-xs text-slate-500">Bank Balance</p>
-                    <p class="mt-1.5 font-mono text-xl font-bold tracking-tight text-slate-900">&#8369;0.00</p>
-                </article>
-                <article class="dashboard-card dashboard-enter [animation-delay:120ms]">
-                    <p class="text-xs text-slate-500">Accounts Receivable</p>
-                    <p class="mt-1.5 font-mono text-xl font-bold tracking-tight text-slate-900">&#8369;0.00</p>
-                </article>
-                <article class="dashboard-card dashboard-enter [animation-delay:160ms]">
-                    <p class="text-xs text-slate-500">Accounts Payable</p>
-                    <p class="mt-1.5 font-mono text-xl font-bold tracking-tight text-slate-900">&#8369;0.00</p>
-                </article>
-                <article class="dashboard-card dashboard-enter [animation-delay:200ms] sm:col-span-2 xl:col-span-1">
-                    <p class="text-xs text-slate-500">Net Income</p>
-                    <p class="mt-1.5 font-mono text-xl font-bold tracking-tight text-slate-900">&#8369;0.00</p>
-                </article>
-            </section>
-
-            <section class="mt-5 grid gap-4 xl:grid-cols-3">
-                <article class="dashboard-panel dashboard-enter xl:col-span-2 [animation-delay:240ms]">
-                    <div class="border-b border-slate-100 px-5 py-4">
-                        <h2 class="text-sm font-semibold text-slate-900">Revenue vs. Expenses</h2>
-                    </div>
-                    <div class="dashboard-empty-state min-h-69">
-                        <svg class="size-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
-                        <p>No revenue or expense data</p>
-                    </div>
-                </article>
-
-                <article class="dashboard-panel dashboard-enter [animation-delay:280ms]">
-                    <div class="border-b border-slate-100 px-5 py-4">
-                        <h2 class="text-sm font-semibold text-slate-900">Cash Flow</h2>
-                    </div>
-                    <div class="dashboard-empty-state min-h-69">
-                        <svg class="size-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h14.25M7.5 13.5l3-3 2.25 2.25L16.5 9m0 0h-2.25m2.25 0v2.25"/></svg>
-                        <p>No cash-flow data</p>
-                    </div>
-                </article>
-            </section>
-
-            <section class="mt-5 grid gap-4 pb-6 xl:grid-cols-3">
-                <article class="dashboard-panel dashboard-enter overflow-hidden [animation-delay:320ms]">
-                    <div class="border-b border-slate-100 px-5 py-4"><h2 class="text-sm font-semibold text-slate-900">Recent Journal Entries</h2></div>
-                    <div class="dashboard-empty-state min-h-52"><p>No journal entries</p></div>
-                </article>
-
-                <article class="dashboard-panel dashboard-enter overflow-hidden [animation-delay:360ms]">
-                    <div class="border-b border-slate-100 px-5 py-4"><h2 class="text-sm font-semibold text-slate-900">Outstanding Invoices</h2></div>
-                    <div class="dashboard-empty-state min-h-52"><p>No outstanding invoices</p></div>
-                </article>
-
-                <article class="dashboard-panel dashboard-enter overflow-hidden [animation-delay:400ms]">
-                    <div class="border-b border-slate-100 px-5 py-4">
-                        <h2 class="text-sm font-semibold text-slate-900">Pending Approvals</h2>
-                        <p class="mt-0.5 text-xs text-slate-500">0 items</p>
-                    </div>
-                    <div class="dashboard-empty-state min-h-52"><p>No pending approvals</p></div>
-                </article>
-            </section>
-        </main>
+        </div>
     </div>
-</body>
-</html>
+
+    <section aria-label="Financial overview" class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <article class="apm-summary-card dashboard-enter [animation-delay:50ms]"><p>Total Assets</p><strong>&#8369;6,037,751.25</strong><span>13 accounts</span></article>
+        <article class="apm-summary-card dashboard-enter [animation-delay:100ms]"><p>Total Liabilities</p><strong>&#8369;807,390.00</strong><span>8 accounts</span></article>
+        <article class="apm-summary-card dashboard-enter [animation-delay:150ms]"><p>Cash on Hand</p><strong>&#8369;245,830.00</strong><span>As of today</span></article>
+        <article class="apm-summary-card dashboard-enter [animation-delay:200ms]"><p>Accounts Receivable</p><strong>&#8369;987,650.00</strong><span>6 open invoices</span></article>
+        <article class="apm-summary-card dashboard-enter [animation-delay:250ms] sm:col-span-2 xl:col-span-1"><p>Net Income</p><strong>&#8369;2,068,470.00</strong><span>Current period</span></article>
+    </section>
+
+    <section class="mt-4 grid gap-4 xl:grid-cols-3">
+        <article class="dashboard-enter overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm xl:col-span-2 [animation-delay:300ms]">
+            <header class="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 class="text-sm font-semibold text-slate-900">Revenue vs. Expenses</h2><p class="mt-0.5 text-xs text-slate-500">Monthly performance</p></div><button type="button" class="apm-outline-button">View Report</button></header>
+            <div class="overflow-x-auto px-4 pt-4 pb-3">
+                <svg class="h-62 min-w-150 w-full" viewBox="0 0 720 250" role="img" aria-label="Static revenue and expense trend chart">
+                    <defs><linearGradient id="dashboard-blue" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2563eb" stop-opacity=".18"/><stop offset="1" stop-color="#2563eb" stop-opacity=".02"/></linearGradient></defs>
+                    <g stroke="#dbe4ef" stroke-dasharray="3 4"><path d="M55 20H700M55 70H700M55 120H700M55 170H700M55 220H700"/></g>
+                    <path d="M55 162 C105 126 135 139 177 111 S250 91 291 106 S365 82 408 68 S482 88 524 57 S605 48 700 33 V220H55Z" fill="url(#dashboard-blue)"/>
+                    <path d="M55 162 C105 126 135 139 177 111 S250 91 291 106 S365 82 408 68 S482 88 524 57 S605 48 700 33" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round"/>
+                    <path d="M55 184 C110 170 142 173 185 157 S256 151 303 145 S372 154 420 129 S496 141 545 119 S628 125 700 103" fill="none" stroke="#f43f5e" stroke-width="2.5" stroke-linecap="round"/>
+                    <g fill="#71819b" font-family="Inter, sans-serif" font-size="10"><text x="13" y="23">&#8369;1.2M</text><text x="19" y="73">&#8369;900K</text><text x="19" y="123">&#8369;600K</text><text x="19" y="173">&#8369;300K</text><text x="34" y="223">&#8369;0</text></g>
+                    <g fill="#71819b" font-family="Inter, sans-serif" font-size="10" text-anchor="middle"><text x="55" y="240">Jan</text><text x="114" y="240">Feb</text><text x="173" y="240">Mar</text><text x="232" y="240">Apr</text><text x="291" y="240">May</text><text x="350" y="240">Jun</text><text x="409" y="240">Jul</text><text x="468" y="240">Aug</text><text x="527" y="240">Sep</text><text x="586" y="240">Oct</text><text x="645" y="240">Nov</text><text x="700" y="240">Dec</text></g>
+                </svg>
+                <div class="mt-2 flex justify-center gap-5 text-[11px]"><span class="flex items-center gap-1.5 text-blue-600"><i class="size-2 rounded-full bg-blue-600"></i>Revenue</span><span class="flex items-center gap-1.5 text-rose-500"><i class="size-2 rounded-full bg-rose-500"></i>Expenses</span></div>
+            </div>
+        </article>
+
+        <article class="dashboard-enter overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm [animation-delay:350ms]">
+            <header class="border-b border-slate-100 px-5 py-4"><h2 class="text-sm font-semibold text-slate-900">Cash Position</h2><p class="mt-0.5 text-xs text-slate-500">Cash and bank accounts</p></header>
+            <div class="space-y-4 p-5">
+                <div><div class="mb-1.5 flex justify-between text-xs"><span>Bank Accounts</span><strong class="font-mono">&#8369;2,358,771.25</strong></div><div class="h-2 rounded-full bg-slate-100"><div class="h-2 w-[82%] rounded-full bg-blue-600"></div></div></div>
+                <div><div class="mb-1.5 flex justify-between text-xs"><span>Cash on Hand</span><strong class="font-mono">&#8369;245,830.00</strong></div><div class="h-2 rounded-full bg-slate-100"><div class="h-2 w-[34%] rounded-full bg-emerald-500"></div></div></div>
+                <div><div class="mb-1.5 flex justify-between text-xs"><span>Petty Cash</span><strong class="font-mono">&#8369;10,000.00</strong></div><div class="h-2 rounded-full bg-slate-100"><div class="h-2 w-[12%] rounded-full bg-amber-500"></div></div></div>
+                <div class="rounded-lg bg-slate-50 p-4"><p class="text-xs text-slate-500">Total available cash</p><p class="mt-1 font-mono text-lg font-bold text-slate-900">&#8369;2,614,601.25</p></div>
+            </div>
+        </article>
+    </section>
+
+    <section class="dashboard-enter mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm [animation-delay:400ms]">
+        <header class="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 class="text-sm font-semibold text-slate-900">Recent Transactions</h2><p class="mt-0.5 text-xs text-slate-500">Latest recorded activity</p></div><button type="button" class="apm-outline-button">View All</button></header>
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-200 border-collapse text-left">
+                <thead><tr class="border-b border-slate-100 text-[11px] font-semibold tracking-wide text-slate-500 uppercase"><th class="px-4 py-3">Reference</th><th class="px-4 py-3">Description</th><th class="px-4 py-3">Date</th><th class="px-4 py-3">Type</th><th class="px-4 py-3 text-right">Amount</th><th class="px-4 py-3">Status</th></tr></thead>
+                <tbody class="text-xs text-slate-700">
+                    <tr class="apm-table-row"><td class="apm-code text-blue-600">JE-2024-0089</td><td class="apm-account-name">Service revenue recognition</td><td>Dec 30, 2024</td><td>Journal Entry</td><td class="apm-money text-right">&#8369;185,000.00</td><td><span class="apm-active-badge">Posted</span></td></tr>
+                    <tr class="apm-table-row"><td class="apm-code text-blue-600">INV-2024-0234</td><td class="apm-account-name">Accenture Philippines, Inc.</td><td>Dec 29, 2024</td><td>Sales Invoice</td><td class="apm-money text-right">&#8369;280,000.00</td><td><span class="rounded-md bg-amber-100 px-2 py-1 text-[10px] font-medium text-amber-700">Pending</span></td></tr>
+                    <tr class="apm-table-row"><td class="apm-code text-blue-600">EXP-2024-0076</td><td class="apm-account-name">Office toner cartridges</td><td>Dec 23, 2024</td><td>Expense</td><td class="apm-money text-right text-red-600">-&#8369;18,400.00</td><td><span class="apm-active-badge">Posted</span></td></tr>
+                    <tr class="apm-table-row"><td class="apm-code text-blue-600">PAY-2024-0058</td><td class="apm-account-name">Customer payment received</td><td>Dec 22, 2024</td><td>Receipt</td><td class="apm-money text-right">&#8369;125,440.00</td><td><span class="apm-active-badge">Posted</span></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+@endsection

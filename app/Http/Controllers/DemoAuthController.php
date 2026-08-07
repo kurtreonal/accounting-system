@@ -64,6 +64,15 @@ class DemoAuthController extends Controller
         ]);
     }
 
+    public function chartOfAccounts(Request $request): View|RedirectResponse
+    {
+        if (! $request->session()->has('demo_user')) {
+            return redirect()->route('login');
+        }
+
+        return view('chart-of-accounts');
+    }
+
     public function logout(Request $request): RedirectResponse
     {
         $request->session()->forget('demo_user');

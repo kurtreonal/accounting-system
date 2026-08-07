@@ -75,6 +75,13 @@ class DemoAuthController extends Controller
 
         return view('chart-of-accounts', [
             'accounts' => array_slice($allAccounts, 0, 10),
+            'accountDataset' => $allAccounts,
+            'accountSummaries' => collect(['Asset', 'Liability', 'Equity', 'Revenue', 'Expense'])->mapWithKeys(
+                fn (string $type): array => [$type => [
+                    'balance' => collect($allAccounts)->where('type', $type)->sum('balance'),
+                    'count' => collect($allAccounts)->where('type', $type)->count(),
+                ]]
+            ),
             'totalAccounts' => count($allAccounts),
         ]);
     }

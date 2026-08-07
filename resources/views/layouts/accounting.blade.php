@@ -28,9 +28,7 @@
                 <a href="{{ route('chart-of-accounts') }}" @if ($activePage === 'chart-of-accounts') aria-current="page" @endif class="apm-nav-item {{ $activePage === 'chart-of-accounts' ? 'bg-blue-600 text-white shadow-md shadow-blue-950/20 hover:bg-blue-500' : '' }}">
                     <span>Chart of Accounts</span><span class="{{ $activePage === 'chart-of-accounts' ? 'rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white' : 'apm-full-badge' }}">FULL</span>
                 </a>
-                <a href="{{ route('journal-entries') }}" @if ($activePage === 'journal-entries') aria-current="page" @endif class="apm-nav-item {{ $activePage === 'journal-entries' ? 'bg-blue-600 text-white shadow-md shadow-blue-950/20 hover:bg-blue-500' : '' }}">
-                    <span>Journal Entries</span><span class="{{ $activePage === 'journal-entries' ? 'rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white' : 'apm-full-badge' }}">FULL</span>
-                </a>
+                <button type="button" class="apm-nav-item"><span>Journal Entries</span><span class="apm-full-badge">FULL</span></button>
                 <button type="button" class="apm-nav-item"><span>General Ledger</span><span class="apm-full-badge">FULL</span></button>
 
                 <p class="apm-nav-heading mt-4">Sales &amp; Receivables</p>

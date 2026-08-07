@@ -1,1 +1,1 @@
-//
+import './chart-of-accounts';

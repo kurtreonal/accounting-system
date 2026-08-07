@@ -3,7 +3,7 @@
         "id": 1,
         "name": "Matavia",
         "email": "admin@gmail.com",
-        "password_hash": "$2y$12$aN06gNq8U1KR0.VhmK4eaOQnEvgOHKUyuJOt.bmr0QnG1LGOwqYLm",
+        "password_hash": "$2y$12$Yq56udf2eiu4yshFplNvf.kwiL5PBaQZKWykBlinYhCHgVjUODMOS",
         "role": "Administrator",
         "active": true
     },

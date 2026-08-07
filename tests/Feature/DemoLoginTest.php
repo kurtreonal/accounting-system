@@ -12,25 +12,25 @@ class DemoLoginTest extends TestCase
             ->assertOk()
             ->assertSee('Enterprise Accounting')
             ->assertSee('autocomplete="off"', false)
-            ->assertDontSee('value="m.santos@nexii.ph"', false);
+            ->assertDontSee('value="admin@gmail.com"', false);
     }
 
     public function test_it_signs_in_with_a_user_from_the_json_fixture(): void
     {
         $this->post('/login', [
-            'email' => 'm.santos@nexii.ph',
-            'password' => 'password',
+            'email' => 'admin@gmail.com',
+            'password' => '123',
             'role' => 'Administrator',
         ])->assertRedirect('/dashboard');
 
-        $this->assertSame('m.santos@nexii.ph', session('demo_user.email'));
+        $this->assertSame('admin@gmail.com', session('demo_user.email'));
     }
 
     public function test_it_rejects_a_mismatched_demo_role(): void
     {
         $this->post('/login', [
-            'email' => 'm.santos@nexii.ph',
-            'password' => 'password',
+            'email' => 'admin@gmail.com',
+            'password' => '123',
             'role' => 'Viewer / Auditor',
         ])->assertSessionHasErrors('email');
     }

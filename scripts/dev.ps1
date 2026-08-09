@@ -15,11 +15,10 @@ Push-Location $projectRoot
 
 try {
     & npx.cmd concurrently `
-        -c '#93c5fd,#c4b5fd,#fdba74' `
+        -c '#93c5fd,#fdba74' `
         'php artisan serve' `
-        'php artisan queue:listen --tries=1 --timeout=0' `
         'npm run dev' `
-        '--names=server,queue,vite'
+        '--names=server,vite'
 
     exit $LASTEXITCODE
 } finally {

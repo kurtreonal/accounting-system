@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\DemoData\AccountDataService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -64,13 +65,34 @@ class DemoAuthController extends Controller
         ]);
     }
 
-    public function chartOfAccounts(Request $request): View|RedirectResponse
+    public function chartOfAccounts(Request $request, AccountDataService $accounts): View|RedirectResponse
     {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
         }
 
-        return view('chart-of-accounts');
+        $allAccounts = $accounts->all();
+
+        return view('chart-of-accounts', [
+            'accounts' => array_slice($allAccounts, 0, 10),
+            'accountDataset' => $allAccounts,
+            'accountSummaries' => collect(['Asset', 'Liability', 'Equity', 'Revenue', 'Expense'])->mapWithKeys(
+                fn (string $type): array => [$type => [
+                    'balance' => collect($allAccounts)->where('type', $type)->sum('balance'),
+                    'count' => collect($allAccounts)->where('type', $type)->count(),
+                ]]
+            ),
+            'totalAccounts' => count($allAccounts),
+        ]);
+    }
+
+    public function journalEntries(Request $request): View|RedirectResponse
+    {
+        if (! $request->session()->has('demo_user')) {
+            return redirect()->route('login');
+        }
+
+        return view('journal-entries');
     }
 
     public function logout(Request $request): RedirectResponse

@@ -5,7 +5,7 @@
         "type": "Equity",
         "sub_type": "none",
         "balance": 25000,
-        "status": "Active"
+        "status": "Inactive"
     },
     {
         "code": "2",

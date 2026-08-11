@@ -3,6 +3,7 @@
 use App\Http\Controllers\ChartOfAccountsController;
 use App\Http\Controllers\ChartOfAccountsExportController;
 use App\Http\Controllers\DemoAuthController;
+use App\Http\Controllers\GeneralLedgerController;
 use App\Http\Controllers\JournalEntryController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +27,9 @@ Route::post('/journal-entries/{journalNumber}/submit-review', [JournalEntryContr
 Route::post('/journal-entries/{journalNumber}/return-draft', [JournalEntryController::class, 'returnToDraft'])->name('journal-entries.return-draft');
 Route::post('/journal-entries/{journalNumber}/post', [JournalEntryController::class, 'post'])->name('journal-entries.post');
 Route::post('/journal-entries/{journalNumber}/reverse', [JournalEntryController::class, 'reverse'])->name('journal-entries.reverse');
+Route::get('/general-ledger', [GeneralLedgerController::class, 'index'])->name('general-ledger');
+Route::get('/general-ledger/data', [GeneralLedgerController::class, 'data'])->name('general-ledger.data');
+Route::get('/general-ledger/export/csv', [GeneralLedgerController::class, 'csv'])->name('general-ledger.export.csv');
 Route::get('/chart-of-accounts/export/pdf', [ChartOfAccountsExportController::class, 'pdf'])->name('chart-of-accounts.export.pdf');
 Route::get('/chart-of-accounts/export/csv', [ChartOfAccountsExportController::class, 'csv'])->name('chart-of-accounts.export.csv');
 Route::post('/logout', [DemoAuthController::class, 'logout'])->name('logout');

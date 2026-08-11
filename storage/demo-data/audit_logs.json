@@ -20,5 +20,51 @@
         "resource_id": "JE-2026-0001",
         "details": [],
         "created_at": "2026-08-10T14:26:38+00:00"
+    },
+    {
+        "id": 3,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "returned_to_draft",
+        "resource": "journal_entry",
+        "resource_id": "JE-2026-0001",
+        "details": [],
+        "created_at": "2026-08-11T01:53:47+00:00"
+    },
+    {
+        "id": 4,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "submitted_for_review",
+        "resource": "journal_entry",
+        "resource_id": "JE-2026-0001",
+        "details": [],
+        "created_at": "2026-08-11T02:14:52+00:00"
+    },
+    {
+        "id": 5,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "posted",
+        "resource": "journal_entry",
+        "resource_id": "JE-2026-0001",
+        "details": [],
+        "created_at": "2026-08-11T02:14:58+00:00"
+    },
+    {
+        "id": 6,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "reversed",
+        "resource": "journal_entry",
+        "resource_id": "JE-2026-0001",
+        "details": {
+            "reversal_entry_number": "JE-2026-0002"
+        },
+        "created_at": "2026-08-11T02:15:44+00:00"
     }
 ]

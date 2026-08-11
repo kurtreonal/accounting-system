@@ -4,7 +4,7 @@
         "name": "Kurt",
         "type": "Equity",
         "sub_type": "none",
-        "balance": 25000,
+        "balance": 24900,
         "status": "Active"
     },
     {
@@ -20,7 +20,7 @@
         "name": "Test",
         "type": "Asset",
         "sub_type": "",
-        "balance": 25000,
+        "balance": 24900,
         "status": "Active"
     }
 ]

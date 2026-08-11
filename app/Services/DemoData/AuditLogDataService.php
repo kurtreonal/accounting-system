@@ -8,8 +8,13 @@ use RuntimeException;
 class AuditLogDataService
 {
     /** @param array<string, mixed> $actor */
-    public function record(array $actor, string $action, string $resourceId, array $details = []): void
-    {
+    public function record(
+        array $actor,
+        string $action,
+        string $resourceId,
+        array $details = [],
+        string $resource = 'journal_entry',
+    ): void {
         $path = (string) config('accounting.audit_logs_path');
         $handle = fopen($path, 'c+');
 
@@ -38,7 +43,7 @@ class AuditLogDataService
                 'actor_name' => $actor['name'] ?? 'Demo User',
                 'actor_role' => $actor['role'] ?? 'Unknown',
                 'action' => $action,
-                'resource' => 'journal_entry',
+                'resource' => $resource,
                 'resource_id' => $resourceId,
                 'details' => $details,
                 'created_at' => now()->toIso8601String(),

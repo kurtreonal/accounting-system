@@ -571,6 +571,7 @@ const setupJournalEntries = () => {
     const requestedEntry = new URLSearchParams(window.location.search).get('entry');
     const linkedEntry = entries.find((entry) => entry.journal_number === requestedEntry);
     if (linkedEntry) fillForm(linkedEntry, true);
+    else if (new URLSearchParams(window.location.search).get('new') === '1' && canMutate) openCreate();
 };
 
 document.addEventListener('DOMContentLoaded', setupJournalEntries);

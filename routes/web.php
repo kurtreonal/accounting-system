@@ -5,6 +5,7 @@ use App\Http\Controllers\ChartOfAccountsExportController;
 use App\Http\Controllers\DemoAuthController;
 use App\Http\Controllers\GeneralLedgerController;
 use App\Http\Controllers\JournalEntryController;
+use App\Http\Controllers\SalesRevenueController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -33,6 +34,11 @@ Route::get('/general-ledger', [GeneralLedgerController::class, 'index'])->name('
 Route::get('/general-ledger/data', [GeneralLedgerController::class, 'data'])->name('general-ledger.data');
 Route::get('/general-ledger/export/csv', [GeneralLedgerController::class, 'csv'])->name('general-ledger.export.csv');
 Route::get('/general-ledger/export/pdf', [GeneralLedgerController::class, 'pdf'])->name('general-ledger.export.pdf');
+Route::get('/sales-revenue', [SalesRevenueController::class, 'index'])->name('sales-revenue');
+Route::post('/sales-revenue/customers', [SalesRevenueController::class, 'storeCustomer'])->name('sales-revenue.customers.store');
+Route::post('/sales-revenue/invoices', [SalesRevenueController::class, 'storeInvoice'])->name('sales-revenue.invoices.store');
+Route::post('/sales-revenue/invoices/{invoiceNumber}/post', [SalesRevenueController::class, 'postInvoice'])->name('sales-revenue.invoices.post');
+Route::get('/sales-revenue/invoices/{invoiceNumber}/print', [SalesRevenueController::class, 'printInvoice'])->name('sales-revenue.invoices.print');
 Route::get('/chart-of-accounts/export/pdf', [ChartOfAccountsExportController::class, 'pdf'])->name('chart-of-accounts.export.pdf');
 Route::get('/chart-of-accounts/export/csv', [ChartOfAccountsExportController::class, 'csv'])->name('chart-of-accounts.export.csv');
 Route::post('/logout', [DemoAuthController::class, 'logout'])->name('logout');

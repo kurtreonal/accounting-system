@@ -50,7 +50,7 @@
         </div>
         <footer class="flex flex-col gap-3 border-t border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between print:hidden"><p id="accounts-record-count" class="text-xs text-slate-500">Showing 1–{{ count($accounts) }} of {{ $totalAccounts }} records</p><div id="accounts-pagination" class="flex items-center gap-1" aria-label="Account table pagination"></div></footer>
     </section>
-    <section aria-label="Account type summaries" class="mx-auto mt-4 grid max-w-[1088px] grid-cols-1 gap-3 pb-8 sm:grid-cols-2 xl:grid-cols-5">
+    <section aria-label="Account type summaries" class="mx-auto mt-4 grid max-w-272 grid-cols-1 gap-3 pb-8 sm:grid-cols-2 xl:grid-cols-5">
         @foreach (['Asset', 'Liability', 'Equity', 'Revenue', 'Expense'] as $type)
             <article class="apm-summary-card dashboard-enter {{ $loop->last ? 'sm:col-span-2 xl:col-span-1' : '' }}" style="animation-delay: {{ 50 + ($loop->iteration * 50) }}ms"><p>{{ $type }}</p><strong>&#8369;{{ number_format($accountSummaries[$type]['balance'], 2) }}</strong><span>{{ $accountSummaries[$type]['count'] }} {{ Str::plural('account', $accountSummaries[$type]['count']) }}</span></article>
         @endforeach

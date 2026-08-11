@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Accounting\DashboardDataService;
 use App\Services\DemoData\AccountDataService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -54,7 +55,7 @@ class DemoAuthController extends Controller
         return redirect()->route('dashboard');
     }
 
-    public function dashboard(Request $request): View|RedirectResponse
+    public function dashboard(Request $request, DashboardDataService $dashboard): View|RedirectResponse
     {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
@@ -62,6 +63,7 @@ class DemoAuthController extends Controller
 
         return view('dashboard', [
             'user' => $request->session()->get('demo_user'),
+            'dashboard' => $dashboard->summary(),
         ]);
     }
 

@@ -25,6 +25,11 @@
     </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
+@php
+    $currentUser = session('demo_user', ['name' => 'Demo User', 'role' => 'Viewer / Auditor']);
+    $userInitials = collect(preg_split('/\s+/', trim($currentUser['name'] ?? 'Demo User')))
+        ->filter()->take(2)->map(fn ($part) => Str::upper(Str::substr($part, 0, 1)))->join('');
+@endphp
 <body class="min-h-screen bg-[#f2f6fa] font-sans text-slate-800 antialiased">
     <div id="app-shell" class="min-h-screen lg:pl-60 print:pl-0">
         <button id="sidebar-overlay" type="button" class="fixed inset-0 z-25 hidden cursor-default bg-slate-950/55 lg:hidden print:hidden" aria-label="Close navigation"></button>
@@ -55,7 +60,7 @@
                 </a>
 
                 <p class="apm-nav-heading mt-4">Sales &amp; Receivables</p>
-                <button type="button" title="Sales and Revenue" class="apm-nav-item"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-chart-line" aria-hidden="true"></i><span class="apm-nav-label">Sales and Revenue</span></span><span class="apm-nav-badge apm-full-badge">FULL</span></button>
+                <a href="{{ route('sales-revenue') }}" title="Sales and Revenue" @if ($activePage === 'sales-revenue') aria-current="page" @endif class="apm-nav-item {{ $activePage === 'sales-revenue' ? 'bg-blue-600 text-white shadow-md shadow-blue-950/20 hover:bg-blue-500' : '' }}"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-chart-line" aria-hidden="true"></i><span class="apm-nav-label">Sales and Revenue</span></span><span class="apm-nav-badge {{ $activePage === 'sales-revenue' ? 'rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white' : 'apm-full-badge' }}">FULL</span></a>
                 <button type="button" title="Accounts Receivable" class="apm-nav-item"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-file-invoice-dollar" aria-hidden="true"></i><span class="apm-nav-label">Accounts Receivable</span></span><span class="apm-nav-badge apm-full-badge">FULL</span></button>
 
                 <p class="apm-nav-heading mt-4">Purchases &amp; Payables</p>
@@ -76,8 +81,8 @@
 
             <div class="flex h-16 shrink-0 items-center border-t border-white/10 px-3">
                 <div class="flex w-full items-center gap-2.5 rounded-lg p-1 transition-colors duration-150 hover:bg-white/5">
-                    <span class="grid size-7 shrink-0 place-items-center rounded-full bg-red-600 text-[10px] font-bold text-white">MS</span>
-                    <div class="apm-sidebar-label min-w-0"><p class="truncate text-[11px] font-medium text-white">Maria Santos</p><span class="inline-block rounded-full bg-red-100 px-1.5 py-0.5 text-[8px] font-bold text-red-600">Administrator</span></div>
+                    <span class="grid size-7 shrink-0 place-items-center rounded-full bg-red-600 text-[10px] font-bold text-white">{{ $userInitials }}</span>
+                    <div class="apm-sidebar-label min-w-0"><p class="truncate text-[11px] font-medium text-white">{{ $currentUser['name'] }}</p><span class="inline-block rounded-full bg-red-100 px-1.5 py-0.5 text-[8px] font-bold text-red-600">{{ $currentUser['role'] }}</span></div>
                 </div>
             </div>
         </aside>
@@ -97,7 +102,7 @@
                     <svg class="theme-icon-moon size-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 15.75A9.75 9.75 0 0 1 8.25 2.25a9.75 9.75 0 1 0 13.5 13.5Z"/></svg>
                     <svg class="theme-icon-sun size-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="3.75"/><path stroke-linecap="round" d="M12 2.25v2.1M12 19.65v2.1M21.75 12h-2.1M4.35 12h-2.1M18.9 5.1l-1.48 1.48M6.58 17.42 5.1 18.9M18.9 18.9l-1.48-1.48M6.58 6.58 5.1 5.1"/></svg>
                 </button>
-                <span class="grid size-8 place-items-center rounded-full bg-red-600 text-[10px] font-bold text-white">MS</span>
+                <span class="grid size-8 place-items-center rounded-full bg-red-600 text-[10px] font-bold text-white">{{ $userInitials }}</span>
             </div>
         </header>
 

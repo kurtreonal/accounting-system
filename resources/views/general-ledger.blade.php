@@ -37,7 +37,7 @@
                     <input id="ledger-account-search" type="search" placeholder="Search accounts..." class="h-9 w-full rounded-lg border border-slate-200 px-3 text-xs outline-none transition focus:border-blue-400 focus:ring-3 focus:ring-blue-100">
                 </label>
             </div>
-            <div id="ledger-account-list" class="dashboard-scrollbar-hidden max-h-[31rem] overflow-y-auto p-2">
+            <div id="ledger-account-list" class="dashboard-scrollbar-hidden max-h-124 overflow-y-auto p-2">
                 @forelse ($accounts as $account)
                     @php($selected = $report && (string) $report['account']['code'] === (string) $account['code'])
                     <button type="button" data-account-code="{{ $account['code'] }}" data-account-search="{{ Str::lower($account['code'].' '.$account['name']) }}"
@@ -92,7 +92,7 @@
                 </div>
 
                 <div class="overflow-x-auto">
-                    <table class="w-full min-w-[800px] text-left text-xs">
+                    <table class="w-full min-w-200 text-left text-xs">
                         <thead class="bg-slate-50 text-[10px] tracking-wide text-slate-500 uppercase">
                             <tr>
                                 <th class="px-4 py-3 font-semibold">Date</th>

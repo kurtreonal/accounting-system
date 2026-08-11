@@ -135,6 +135,6 @@
     </tr>
 </template>
 
-<div id="journal-toast" class="fixed right-4 bottom-4 z-[60] hidden max-w-sm rounded-lg border bg-white px-4 py-3 text-xs font-medium shadow-lg" role="status"></div>
+<div id="journal-toast" class="fixed right-4 bottom-4 z-60 hidden max-w-sm rounded-lg border bg-white px-4 py-3 text-xs font-medium shadow-lg" role="status"></div>
 <script id="journal-entry-data" type="application/json">@json($journalEntries)</script>
 @endsection

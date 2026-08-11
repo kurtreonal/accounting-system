@@ -2,6 +2,7 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 import './chart-of-accounts';
 import './journal-entries';
 import './general-ledger';
+import './sales-revenue';
 
 const setupSidebarToggle = () => {
     const button = document.querySelector('#sidebar-toggle');

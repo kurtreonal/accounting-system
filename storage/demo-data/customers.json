@@ -1,1 +1,17 @@
-[]
+[
+    {
+        "id": 1,
+        "code": "NEX-001",
+        "name": "Nexii Client",
+        "contact_person": null,
+        "email": null,
+        "phone": null,
+        "billing_address": "Makati City, Metro Manila",
+        "tax_id": null,
+        "credit_terms_days": "30",
+        "opening_balance": "0.00",
+        "status": "Active",
+        "created_at": "2026-08-11T07:58:31+00:00",
+        "updated_at": "2026-08-11T07:58:31+00:00"
+    }
+]

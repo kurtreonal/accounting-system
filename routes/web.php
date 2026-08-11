@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountsReceivableController;
 use App\Http\Controllers\ChartOfAccountsController;
 use App\Http\Controllers\ChartOfAccountsExportController;
 use App\Http\Controllers\DemoAuthController;
@@ -39,6 +40,9 @@ Route::post('/sales-revenue/customers', [SalesRevenueController::class, 'storeCu
 Route::post('/sales-revenue/invoices', [SalesRevenueController::class, 'storeInvoice'])->name('sales-revenue.invoices.store');
 Route::post('/sales-revenue/invoices/{invoiceNumber}/post', [SalesRevenueController::class, 'postInvoice'])->name('sales-revenue.invoices.post');
 Route::get('/sales-revenue/invoices/{invoiceNumber}/print', [SalesRevenueController::class, 'printInvoice'])->name('sales-revenue.invoices.print');
+Route::get('/accounts-receivable', [AccountsReceivableController::class, 'index'])->name('accounts-receivable');
+Route::post('/accounts-receivable/payments', [AccountsReceivableController::class, 'storePayment'])->name('accounts-receivable.payments.store');
+Route::get('/accounts-receivable/export/csv', [AccountsReceivableController::class, 'csv'])->name('accounts-receivable.export.csv');
 Route::get('/chart-of-accounts/export/pdf', [ChartOfAccountsExportController::class, 'pdf'])->name('chart-of-accounts.export.pdf');
 Route::get('/chart-of-accounts/export/csv', [ChartOfAccountsExportController::class, 'csv'])->name('chart-of-accounts.export.csv');
 Route::post('/logout', [DemoAuthController::class, 'logout'])->name('logout');

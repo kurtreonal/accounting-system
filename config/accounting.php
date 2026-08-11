@@ -6,4 +6,5 @@ return [
     'audit_logs_path' => storage_path('demo-data/audit_logs.json'),
     'customers_path' => storage_path('demo-data/customers.json'),
     'invoices_path' => storage_path('demo-data/invoices.json'),
+    'customer_payments_path' => storage_path('demo-data/customer_payments.json'),
 ];

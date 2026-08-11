@@ -3,6 +3,7 @@ import './chart-of-accounts';
 import './journal-entries';
 import './general-ledger';
 import './sales-revenue';
+import './accounts-receivable';
 
 const setupSidebarToggle = () => {
     const button = document.querySelector('#sidebar-toggle');

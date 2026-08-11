@@ -20,17 +20,22 @@ class SalesDataService
     public function invoices(): array
     {
         $invoices = $this->load($this->invoicesPath(), 'invoices');
+        $paymentTotals = $this->paymentTotals();
         usort($invoices, static fn (array $left, array $right): int => [$right['invoice_date'], $right['invoice_number']] <=> [$left['invoice_date'], $left['invoice_number']]);
 
-        return array_map(fn (array $invoice): array => $this->withDisplayStatus($invoice), $invoices);
+        return array_map(
+            fn (array $invoice): array => $this->withDisplayStatus($invoice, $paymentTotals[$invoice['invoice_number']] ?? 0),
+            $invoices,
+        );
     }
 
     /** @return array<string, mixed> */
     public function findInvoice(string $invoiceNumber): array
     {
+        $paymentTotals = $this->paymentTotals();
         foreach ($this->load($this->invoicesPath(), 'invoices') as $invoice) {
             if ($invoice['invoice_number'] === $invoiceNumber) {
-                return $this->withDisplayStatus($invoice);
+                return $this->withDisplayStatus($invoice, $paymentTotals[$invoiceNumber] ?? 0);
             }
         }
 
@@ -88,7 +93,9 @@ class SalesDataService
     /** @return array<string, mixed> */
     public function markPosted(string $invoiceNumber, string $journalNumber, array $actor): array
     {
-        return $this->mutate($this->invoicesPath(), 'invoices', function (array &$invoices) use ($invoiceNumber, $journalNumber, $actor): array {
+        $paymentTotal = $this->paymentTotals()[$invoiceNumber] ?? 0;
+
+        return $this->mutate($this->invoicesPath(), 'invoices', function (array &$invoices) use ($invoiceNumber, $journalNumber, $actor, $paymentTotal): array {
             $index = $this->invoiceIndex($invoices, $invoiceNumber);
             if ($invoices[$index]['status'] !== 'Draft') {
                 throw new RuntimeException('Only draft invoices can be posted.');
@@ -106,7 +113,42 @@ class SalesDataService
                 'updated_at' => now()->toIso8601String(),
             ];
 
-            return $this->withDisplayStatus($invoices[$index]);
+            return $this->withDisplayStatus($invoices[$index], $paymentTotal);
+        });
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function payments(): array
+    {
+        $payments = $this->load($this->paymentsPath(), 'customer payments');
+        usort($payments, static fn (array $left, array $right): int => [$right['payment_date'], $right['receipt_number']] <=> [$left['payment_date'], $left['receipt_number']]);
+
+        return $payments;
+    }
+
+    /** @param array<string, mixed> $attributes
+     * @return array<string, mixed>
+     */
+    public function createPayment(array $attributes): array
+    {
+        return $this->mutate($this->paymentsPath(), 'customer payments', function (array &$payments) use ($attributes): array {
+            foreach ($payments as $payment) {
+                if (($payment['request_token'] ?? null) === ($attributes['request_token'] ?? null)) {
+                    throw new RuntimeException('This payment request was already posted.');
+                }
+            }
+
+            $now = now()->toIso8601String();
+            $payment = [
+                'id' => $this->nextId($payments),
+                'receipt_number' => $this->nextReceiptNumber($payments, $attributes['payment_date']),
+                ...$attributes,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+            $payments[] = $payment;
+
+            return $payment;
         });
     }
 
@@ -191,6 +233,20 @@ class SalesDataService
         return sprintf('INV-%s-%04d', $year, $highest + 1);
     }
 
+    /** @param array<int, array<string, mixed>> $payments */
+    private function nextReceiptNumber(array $payments, string $date): string
+    {
+        $year = substr($date, 0, 4);
+        $highest = 0;
+        foreach ($payments as $payment) {
+            if (preg_match('/^RCP-'.preg_quote($year, '/').'-(\d+)$/', $payment['receipt_number'], $matches) === 1) {
+                $highest = max($highest, (int) $matches[1]);
+            }
+        }
+
+        return sprintf('RCP-%s-%04d', $year, $highest + 1);
+    }
+
     /** @param array<int, array<string, mixed>> $invoices */
     private function invoiceIndex(array $invoices, string $invoiceNumber): int
     {
@@ -206,19 +262,39 @@ class SalesDataService
     /** @param array<string, mixed> $invoice
      * @return array<string, mixed>
      */
-    private function withDisplayStatus(array $invoice): array
+    private function withDisplayStatus(array $invoice, float $payments = 0): array
     {
-        $remaining = max(0, round((float) $invoice['total'] - (float) ($invoice['amount_paid'] ?? 0), 2));
+        $amountPaid = round((float) ($invoice['amount_paid'] ?? 0) + $payments, 2);
+        $remaining = max(0, round((float) $invoice['total'] - $amountPaid, 2));
         $status = $invoice['status'];
         if ($status === 'Posted' && $remaining === 0.0) {
             $status = 'Paid';
-        } elseif ($status === 'Posted' && (float) ($invoice['amount_paid'] ?? 0) > 0) {
+        } elseif ($status === 'Posted' && $amountPaid > 0) {
             $status = 'Partially Paid';
         } elseif ($status === 'Posted' && $invoice['due_date'] < now()->toDateString()) {
             $status = 'Overdue';
+        } elseif ($status === 'Posted') {
+            $status = 'Unpaid';
         }
 
-        return [...$invoice, 'remaining_balance' => $remaining, 'display_status' => $status];
+        return [...$invoice, 'amount_paid' => $amountPaid, 'remaining_balance' => $remaining, 'display_status' => $status];
+    }
+
+    /** @return array<string, float> */
+    private function paymentTotals(): array
+    {
+        $totals = [];
+        foreach ($this->payments() as $payment) {
+            foreach ($payment['allocations'] ?? [] as $allocation) {
+                $invoiceNumber = (string) ($allocation['invoice_number'] ?? '');
+                if ($invoiceNumber === '') {
+                    continue;
+                }
+                $totals[$invoiceNumber] = round(($totals[$invoiceNumber] ?? 0) + (float) ($allocation['amount'] ?? 0), 2);
+            }
+        }
+
+        return $totals;
     }
 
     private function customersPath(): string
@@ -229,5 +305,10 @@ class SalesDataService
     private function invoicesPath(): string
     {
         return (string) config('accounting.invoices_path');
+    }
+
+    private function paymentsPath(): string
+    {
+        return (string) config('accounting.customer_payments_path');
     }
 }

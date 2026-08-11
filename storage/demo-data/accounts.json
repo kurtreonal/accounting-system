@@ -1,1 +1,58 @@
-[]
+[
+    {
+        "code": "1",
+        "name": "Cash on Hand",
+        "type": "Asset",
+        "sub_type": "Cash",
+        "balance": 45500,
+        "status": "Active"
+    },
+    {
+        "code": "2",
+        "name": "Accounts Receivable",
+        "type": "Asset",
+        "sub_type": "Current Asset",
+        "balance": 3360,
+        "status": "Active"
+    },
+    {
+        "code": "3",
+        "name": "Accounts Payable",
+        "type": "Liability",
+        "sub_type": "Current Liability",
+        "balance": 0,
+        "status": "Active"
+    },
+    {
+        "code": "4",
+        "name": "Owner Capital",
+        "type": "Equity",
+        "sub_type": "Owner Equity",
+        "balance": 400000,
+        "status": "Active"
+    },
+    {
+        "code": "5",
+        "name": "Sales Revenue",
+        "type": "Revenue",
+        "sub_type": "Operating Revenue",
+        "balance": 3000,
+        "status": "Active"
+    },
+    {
+        "code": "6",
+        "name": "Office Supplies Expense",
+        "type": "Expense",
+        "sub_type": "Operating Expense",
+        "balance": 4500,
+        "status": "Active"
+    },
+    {
+        "code": "7",
+        "name": "Output Tax Payable",
+        "type": "Liability",
+        "sub_type": "Current Liability",
+        "balance": 360,
+        "status": "Active"
+    }
+]

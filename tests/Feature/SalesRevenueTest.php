@@ -13,7 +13,7 @@ class SalesRevenueTest extends TestCase
         parent::setUp();
 
         $suffix = uniqid('', true);
-        foreach (['accounts', 'journals', 'audit', 'customers', 'invoices'] as $resource) {
+        foreach (['accounts', 'journals', 'audit', 'customers', 'invoices', 'payments'] as $resource) {
             $this->paths[$resource] = storage_path("framework/testing/sales-{$resource}-{$suffix}.json");
             file_put_contents($this->paths[$resource], '[]');
         }
@@ -27,6 +27,7 @@ class SalesRevenueTest extends TestCase
         config()->set('accounting.audit_logs_path', $this->paths['audit']);
         config()->set('accounting.customers_path', $this->paths['customers']);
         config()->set('accounting.invoices_path', $this->paths['invoices']);
+        config()->set('accounting.customer_payments_path', $this->paths['payments']);
     }
 
     protected function tearDown(): void

@@ -242,6 +242,9 @@ const setupSalesRevenue = () => {
 
     const requested = new URLSearchParams(window.location.search).get('new');
     if (requested === 'invoice') document.querySelector('#new-invoice-button')?.click();
+    const requestedInvoice = new URLSearchParams(window.location.search).get('invoice');
+    const invoice = data.invoices.find((item) => item.invoice_number === requestedInvoice);
+    if (invoice) viewInvoice(invoice);
 };
 
 document.addEventListener('DOMContentLoaded', setupSalesRevenue);

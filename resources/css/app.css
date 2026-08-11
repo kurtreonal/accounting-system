@@ -389,6 +389,20 @@ html.dark .dashboard-chart-labels {
     fill: #94a3b8;
 }
 
+html.dark .ledger-opening-balance {
+    border-color: #334155;
+    background-color: #1e293b;
+    box-shadow: inset 3px 0 0 #3b82f6;
+}
+
+html.dark .ledger-opening-balance td:first-child {
+    color: #cbd5e1;
+}
+
+html.dark .ledger-opening-balance td:last-child {
+    color: #f8fafc;
+}
+
 #app-shell,
 #app-sidebar {
     transition-property: padding-left, width, transform;

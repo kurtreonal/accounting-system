@@ -50,8 +50,8 @@
                 <a href="{{ route('journal-entries') }}" title="Journal Entries" @if ($activePage === 'journal-entries') aria-current="page" @endif class="apm-nav-item {{ $activePage === 'journal-entries' ? 'bg-blue-600 text-white shadow-md shadow-blue-950/20 hover:bg-blue-500' : '' }}">
                     <span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-book" aria-hidden="true"></i><span class="apm-nav-label">Journal Entries</span></span><span class="apm-nav-badge {{ $activePage === 'journal-entries' ? 'rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white' : 'apm-full-badge' }}">FULL</span>
                 </a>
-                <a href="{{ route('general-ledger') }}" @if ($activePage === 'general-ledger') aria-current="page" @endif class="apm-nav-item {{ $activePage === 'general-ledger' ? 'bg-blue-600 text-white shadow-md shadow-blue-950/20 hover:bg-blue-500' : '' }}">
-                    <span>General Ledger</span><span class="{{ $activePage === 'general-ledger' ? 'rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white' : 'apm-full-badge' }}">FULL</span>
+                <a href="{{ route('general-ledger') }}" title="General Ledger" @if ($activePage === 'general-ledger') aria-current="page" @endif class="apm-nav-item {{ $activePage === 'general-ledger' ? 'bg-blue-600 text-white shadow-md shadow-blue-950/20 hover:bg-blue-500' : '' }}">
+                    <span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-book-open" aria-hidden="true"></i><span class="apm-nav-label">General Ledger</span></span><span class="apm-nav-badge {{ $activePage === 'general-ledger' ? 'rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white' : 'apm-full-badge' }}">FULL</span>
                 </a>
 
                 <p class="apm-nav-heading mt-4">Sales &amp; Receivables</p>

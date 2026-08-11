@@ -106,7 +106,7 @@
                         </thead>
                         <tbody id="ledger-table-body" class="text-slate-700">
                             @if ($report)
-                                <tr class="border-b border-slate-100 bg-slate-50/60">
+                                <tr class="ledger-opening-balance border-b border-slate-100 bg-slate-50/60">
                                     <td colspan="5" class="px-4 py-3 font-medium text-slate-500">Beginning balance</td>
                                     <td class="apm-money px-4 py-3 text-right">PHP {{ number_format((float) $report['beginning_balance'], 2) }}</td>
                                 </tr>

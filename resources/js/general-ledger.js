@@ -88,7 +88,7 @@ const setupGeneralLedger = () => {
     const renderRows = (visible) => {
         tableBody.replaceChildren();
         const beginning = document.createElement('tr');
-        beginning.className = 'border-b border-slate-100 bg-slate-50/60';
+        beginning.className = 'ledger-opening-balance border-b border-slate-100 bg-slate-50/60';
         const label = el('td', 'Beginning balance', 'px-4 py-3 font-medium text-slate-500');
         label.colSpan = 5;
         beginning.append(label);

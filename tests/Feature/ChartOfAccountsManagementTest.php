@@ -34,7 +34,7 @@ class ChartOfAccountsManagementTest extends TestCase
         $this->withSession($session)->get('/journal-entries')->assertOk()->assertSee('Journal Entries');
         $this->withSession($session)->get('/chart-of-accounts')
             ->assertOk()
-            ->assertSee('Cash on Hand')
+            ->assertSee('Existing Test Account')
             ->assertSee(route('chart-of-accounts.export.csv'), false)
             ->assertSee(route('chart-of-accounts.export.pdf'), false)
             ->assertSee('id="new-account-modal"', false);
@@ -88,12 +88,22 @@ class ChartOfAccountsManagementTest extends TestCase
             ])->assertForbidden();
     }
 
+    public function test_sub_type_is_optional(): void
+    {
+        $this->withSession($this->demoSession())->postJson('/chart-of-accounts', [
+            'name' => 'Account Without Sub-Type',
+            'type' => 'Expense',
+            'balance' => 0,
+            'status' => 'Active',
+        ])->assertCreated()->assertJsonPath('account.sub_type', '');
+    }
+
     /** @return array<string, mixed> */
     private function sampleAccount(): array
     {
         return [
             'code' => '1000',
-            'name' => 'Cash on Hand',
+            'name' => 'Existing Test Account',
             'type' => 'Asset',
             'sub_type' => 'Current Asset',
             'balance' => 100,

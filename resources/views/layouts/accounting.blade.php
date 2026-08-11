@@ -8,8 +8,8 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-[#f2f6fa] font-sans text-slate-800 antialiased">
-    <div class="min-h-screen lg:pl-60">
-        <aside class="fixed inset-y-0 left-0 z-30 hidden h-dvh w-60 flex-col overflow-hidden bg-[#0f172a] text-slate-300 lg:flex">
+    <div class="min-h-screen lg:pl-60 print:pl-0">
+        <aside class="fixed inset-y-0 left-0 z-30 hidden h-dvh w-60 flex-col overflow-hidden bg-[#0f172a] text-slate-300 lg:flex print:hidden">
             <div class="flex h-14 shrink-0 items-center gap-2.5 border-b border-white/10 px-3.5">
                 <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-blue-600 text-[11px] font-bold text-white shadow-lg shadow-blue-950/30">APM</span>
                 <div class="min-w-0 leading-tight">
@@ -61,7 +61,7 @@
             </div>
         </aside>
 
-        <header class="sticky top-0 z-20 flex h-14 items-center border-b border-slate-200 bg-white/95 px-3 backdrop-blur sm:px-5">
+        <header class="sticky top-0 z-20 flex h-14 items-center border-b border-slate-200 bg-white/95 px-3 backdrop-blur sm:px-5 print:hidden">
             <button type="button" aria-label="Open menu" class="apm-icon-button mr-2">
                 <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/></svg>
             </button>

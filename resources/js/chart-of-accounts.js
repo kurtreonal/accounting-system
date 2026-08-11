@@ -81,7 +81,7 @@ const setupChartOfAccounts = () => {
         statusInput.disabled = false;
         form.reset();
         codeInput.value = nextAccountCode();
-        balanceInput.value = '0.00';
+        balanceInput.value = '';
         modalTitle.textContent = 'New Account';
         submitButton.textContent = 'Add Account';
         showModal();

@@ -1,0 +1,7 @@
+<?php
+
+return [
+    'accounts_path' => storage_path('demo-data/accounts.json'),
+    'journal_entries_path' => storage_path('demo-data/journal_entries.json'),
+    'audit_logs_path' => storage_path('demo-data/audit_logs.json'),
+];

@@ -97,7 +97,7 @@ class ChartOfAccountsController extends Controller
         $rules = [
             'name' => ['required', 'string', 'max:100'],
             'type' => ['required', Rule::in(['Asset', 'Liability', 'Equity', 'Revenue', 'Expense'])],
-            'sub_type' => ['required', 'string', 'max:100'],
+            'sub_type' => ['nullable', 'string', 'max:100'],
             'balance' => ['required', 'numeric'],
         ];
 
@@ -117,7 +117,7 @@ class ChartOfAccountsController extends Controller
         $account = [
             'name' => trim($validated['name']),
             'type' => $validated['type'],
-            'sub_type' => trim($validated['sub_type']),
+            'sub_type' => trim((string) ($validated['sub_type'] ?? '')),
             'balance' => round((float) $validated['balance'], 2),
         ];
 

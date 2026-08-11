@@ -1,0 +1,48 @@
+[
+    {
+        "journal_number": "JE-2026-0001",
+        "date": "2026-08-10",
+        "reference": "12000229",
+        "description": "CX 1Q",
+        "source_type": "Bill",
+        "lines": [
+            {
+                "id": 1,
+                "account_code": "1",
+                "account_name": "Kurt",
+                "description": "",
+                "party_reference": "test ref",
+                "cost_center": "",
+                "debit": 0,
+                "credit": 2000
+            },
+            {
+                "id": 2,
+                "account_code": "3",
+                "account_name": "Test",
+                "description": "",
+                "party_reference": "test ref",
+                "cost_center": "",
+                "debit": 2000,
+                "credit": 0
+            }
+        ],
+        "total_debit": 2000,
+        "total_credit": 2000,
+        "created_by": {
+            "id": 1,
+            "name": "Matavia"
+        },
+        "status": "For Review",
+        "reviewed_by": null,
+        "posted_by": null,
+        "reversed_by": null,
+        "reversal_of": null,
+        "reversal_entry_number": null,
+        "created_at": "2026-08-10T14:26:38+00:00",
+        "updated_at": "2026-08-10T14:26:38+00:00",
+        "reviewed_at": null,
+        "posted_at": null,
+        "reversed_at": null
+    }
+]

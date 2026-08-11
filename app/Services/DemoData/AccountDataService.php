@@ -85,6 +85,23 @@ class AccountDataService
         });
     }
 
+    /** @param array<int, array<string, mixed>> $lines */
+    public function applyJournalLines(array $lines): void
+    {
+        $this->mutate(function (array &$accounts) use ($lines): null {
+            foreach ($lines as $line) {
+                $index = $this->accountIndex($accounts, (string) $line['account_code']);
+                $debit = round((float) ($line['debit'] ?? 0), 2);
+                $credit = round((float) ($line['credit'] ?? 0), 2);
+                $debitNormal = in_array($accounts[$index]['type'], ['Asset', 'Expense'], true);
+                $change = $debitNormal ? $debit - $credit : $credit - $debit;
+                $accounts[$index]['balance'] = round((float) $accounts[$index]['balance'] + $change, 2);
+            }
+
+            return null;
+        });
+    }
+
     /** @return array<int, array{code: string, name: string, type: string, sub_type: string, balance: float|int, status: string}> */
     private function load(): array
     {

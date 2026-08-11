@@ -10,6 +10,26 @@ use Tests\TestCase;
 
 class ChartOfAccountsExportTest extends TestCase
 {
+    private string $accountsPath;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->accountsPath = storage_path('framework/testing/chart-export-'.uniqid('', true).'.json');
+        file_put_contents($this->accountsPath, json_encode($this->fixtureAccounts(), JSON_THROW_ON_ERROR));
+        config()->set('accounting.accounts_path', $this->accountsPath);
+    }
+
+    protected function tearDown(): void
+    {
+        if (isset($this->accountsPath) && is_file($this->accountsPath)) {
+            unlink($this->accountsPath);
+        }
+
+        parent::tearDown();
+    }
+
     public function test_csv_export_is_excel_compatible_and_uses_the_shared_dataset(): void
     {
         $response = $this->withSession($this->demoSession())
@@ -23,7 +43,7 @@ class ChartOfAccountsExportTest extends TestCase
 
         $this->assertStringStartsWith("\xEF\xBB\xBF", $content);
         $this->assertStringContainsString('Account Code', $content);
-        $this->assertStringContainsString('Cash on Hand', $content);
+        $this->assertStringContainsString('Export Test Asset', $content);
     }
 
     public function test_exports_respect_valid_filters(): void
@@ -33,8 +53,8 @@ class ChartOfAccountsExportTest extends TestCase
 
         $content = $response->streamedContent();
 
-        $this->assertStringContainsString('Accounts Payable', $content);
-        $this->assertStringNotContainsString('Cash on Hand', $content);
+        $this->assertStringContainsString('Export Test Liability', $content);
+        $this->assertStringNotContainsString('Export Test Asset', $content);
     }
 
     public function test_pdf_export_downloads_a_valid_fpdf_document(): void
@@ -97,6 +117,29 @@ class ChartOfAccountsExportTest extends TestCase
                 'name' => 'Maria Santos',
                 'email' => 'admin@gmail.com',
                 'role' => 'Administrator',
+            ],
+        ];
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function fixtureAccounts(): array
+    {
+        return [
+            [
+                'code' => 'T-100',
+                'name' => 'Export Test Asset',
+                'type' => 'Asset',
+                'sub_type' => 'Test Asset',
+                'balance' => 100.25,
+                'status' => 'Active',
+            ],
+            [
+                'code' => 'T-200',
+                'name' => 'Export Test Liability',
+                'type' => 'Liability',
+                'sub_type' => 'Test Liability',
+                'balance' => 50.50,
+                'status' => 'Active',
             ],
         ];
     }

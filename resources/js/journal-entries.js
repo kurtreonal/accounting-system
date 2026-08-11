@@ -541,6 +541,9 @@ const setupJournalEntries = () => {
     });
     document.querySelector('#journal-print-list').addEventListener('click', () => window.print());
     renderEntries();
+    const requestedEntry = new URLSearchParams(window.location.search).get('entry');
+    const linkedEntry = entries.find((entry) => entry.journal_number === requestedEntry);
+    if (linkedEntry) fillForm(linkedEntry, true);
 };
 
 document.addEventListener('DOMContentLoaded', setupJournalEntries);

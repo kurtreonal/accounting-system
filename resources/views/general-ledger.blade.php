@@ -4,13 +4,11 @@
 <main id="general-ledger-page" class="p-4 sm:p-5 print:p-0"
     data-report-url="{{ route('general-ledger.data') }}"
     data-export-url="{{ route('general-ledger.export.csv') }}"
+    data-pdf-url="{{ route('general-ledger.export.pdf') }}"
     data-journal-url="{{ route('journal-entries') }}">
-    <div class="mb-5 hidden print:block">
-        <h1 class="text-xl font-bold text-slate-900">General Ledger</h1>
-        <p id="ledger-print-context" class="mt-1 text-xs text-slate-500">
-            Period: {{ request('date_from', 'Beginning') }} to {{ request('date_to', 'Present') }} · Generated {{ now()->format('Y-m-d H:i') }}
-        </p>
-    </div>
+    <p id="ledger-print-context" class="mb-4 hidden text-xs text-slate-500 print:block">
+        Period: {{ request('date_from', 'Beginning') }} to {{ request('date_to', 'Present') }}
+    </p>
     <div class="dashboard-enter print:hidden">
         <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-xs text-slate-500">
             <span>Accounting</span><span class="text-slate-300">/</span><span class="font-medium text-slate-700">General Ledger</span>
@@ -23,7 +21,8 @@
             </div>
             <div class="flex gap-2">
                 <a id="ledger-export" href="{{ $report ? route('general-ledger.export.csv', ['account' => $report['account']['code']]) : '#' }}" class="apm-outline-button {{ $report ? '' : 'pointer-events-none opacity-50' }}">Export CSV</a>
-                <button id="ledger-print" type="button" class="apm-outline-button" @disabled(! $report)>Print</button>
+                <a id="ledger-export-pdf" href="{{ $report ? route('general-ledger.export.pdf', ['account' => $report['account']['code']]) : '#' }}" class="apm-primary-button sm:hidden {{ $report ? '' : 'pointer-events-none opacity-50' }}" download>Export PDF</a>
+                <button id="ledger-print" type="button" class="apm-outline-button hidden sm:inline-flex" data-print-page @disabled(! $report)>Print</button>
             </div>
         </div>
     </div>

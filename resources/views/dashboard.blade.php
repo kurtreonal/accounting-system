@@ -1,12 +1,13 @@
 @extends('layouts.accounting', ['pageTitle' => 'Dashboard', 'activePage' => 'dashboard'])
 
 @section('content')
-<main class="p-4 sm:p-5">
-    <div class="dashboard-enter">
+<main id="dashboard-page" class="p-4 sm:p-5">
+    <div class="dashboard-enter print:hidden">
         <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-xs text-slate-500"><span>Overview</span><span class="text-slate-300">/</span><span class="font-medium text-slate-700">Dashboard</span></nav>
         <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div><h1 class="text-xl font-bold text-slate-900">Dashboard</h1><p class="mt-1 text-sm text-slate-500">Overview of your business and financial activity</p></div>
             <div class="flex flex-wrap gap-2">
+                <button type="button" class="apm-outline-button" data-print-page>Print</button>
                 <button type="button" class="apm-outline-button">New Invoice</button>
                 <button type="button" class="apm-primary-button"><svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>New Journal Entry</button>
             </div>

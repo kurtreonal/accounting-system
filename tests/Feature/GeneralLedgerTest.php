@@ -94,6 +94,13 @@ class GeneralLedgerTest extends TestCase
         $this->assertStringContainsString('JE-2026-0002', $csv);
         $this->assertStringNotContainsString('JE-2026-0001', $csv);
         $this->assertStringContainsString('Running Balance', $csv);
+
+        $pdf = $this->withSession($this->demoSession())
+            ->get('/general-ledger/export/pdf?account=1000&date_from=2026-02-01&date_to=2026-02-28');
+        $pdf->assertOk()
+            ->assertHeader('content-type', 'application/pdf')
+            ->assertDownload('general-ledger-1000-'.now()->format('Y-m-d').'.pdf');
+        $this->assertStringStartsWith('%PDF-', $pdf->getContent());
     }
 
     /** @return array<string, mixed> */

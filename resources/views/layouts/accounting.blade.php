@@ -82,7 +82,7 @@
             </div>
         </aside>
 
-        <header class="sticky top-0 z-20 flex h-14 items-center border-b border-slate-200 bg-white/95 px-3 backdrop-blur sm:px-5 print:hidden">
+        <header id="app-header" class="sticky top-0 z-20 flex h-14 items-center border-b border-slate-200 bg-white/95 px-3 backdrop-blur sm:px-5 print:hidden">
             <button id="sidebar-toggle" type="button" aria-label="Collapse navigation" aria-controls="app-sidebar" aria-expanded="true" class="apm-icon-button mr-2">
                 <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/></svg>
             </button>
@@ -98,6 +98,17 @@
                     <svg class="theme-icon-sun size-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="3.75"/><path stroke-linecap="round" d="M12 2.25v2.1M12 19.65v2.1M21.75 12h-2.1M4.35 12h-2.1M18.9 5.1l-1.48 1.48M6.58 17.42 5.1 18.9M18.9 18.9l-1.48-1.48M6.58 6.58 5.1 5.1"/></svg>
                 </button>
                 <span class="grid size-8 place-items-center rounded-full bg-red-600 text-[10px] font-bold text-white">MS</span>
+            </div>
+        </header>
+
+        <header class="apm-print-header" aria-hidden="true">
+            <div>
+                <p class="apm-print-brand">APM Customs</p>
+                <p class="apm-print-system">Accounting System</p>
+            </div>
+            <div class="apm-print-title-block">
+                <h1>{{ $pageTitle }}</h1>
+                <p>Generated <span data-print-generated>{{ now()->format('Y-m-d H:i') }}</span></p>
             </div>
         </header>
 

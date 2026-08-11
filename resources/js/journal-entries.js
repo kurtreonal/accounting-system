@@ -20,6 +20,7 @@ const setupJournalEntries = () => {
     const saveButton = document.querySelector('#save-journal-draft');
     const saveSubmitButton = document.querySelector('#save-submit-journal');
     const modalPrint = document.querySelector('#journal-modal-print');
+    const modalPdf = document.querySelector('#journal-modal-pdf');
     const numberInput = document.querySelector('#journal-number');
     const dateInput = document.querySelector('#journal-date');
     const referenceInput = document.querySelector('#journal-reference');
@@ -37,6 +38,7 @@ const setupJournalEntries = () => {
     const recordCount = document.querySelector('#journal-record-count');
     const pagination = document.querySelector('#journal-pagination');
     const exportLink = document.querySelector('#journal-export');
+    const pdfExportLink = document.querySelector('#journal-export-pdf');
     const toast = document.querySelector('#journal-toast');
     const currency = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
     const pageSize = 10;
@@ -178,7 +180,8 @@ const setupJournalEntries = () => {
         numberInput.value = 'Generated when saved';
         dateInput.value = today();
         sourceInput.value = 'Manual';
-        modalPrint.classList.add('hidden');
+        modalPrint.classList.remove('sm:inline-flex');
+        modalPdf.classList.add('hidden');
         addLine({}, false);
         addLine({}, false);
         setReadOnly(false);
@@ -213,7 +216,9 @@ const setupJournalEntries = () => {
             : entry.reversal_of ? ` - Reversal of: ${entry.reversal_of}` : '';
         modalStatus.textContent = `${entry.status}${linkText}`;
         modalPrint.href = endpoint(page.dataset.printUrlTemplate, entry.journal_number);
-        modalPrint.classList.toggle('hidden', !readOnly);
+        modalPrint.classList.toggle('sm:inline-flex', readOnly);
+        modalPdf.href = endpoint(page.dataset.pdfUrlTemplate, entry.journal_number);
+        modalPdf.classList.toggle('hidden', !readOnly);
         saveButton.textContent = 'Save Changes';
         setReadOnly(readOnly);
         calculateTotals();
@@ -343,7 +348,7 @@ const setupJournalEntries = () => {
         return cell;
     };
 
-    const actionButton = (label, action, entry, style = 'text-slate-600 hover:bg-blue-100 hover:text-blue-700') => {
+    const actionButton = (label, action, entry, style = 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-blue-700') => {
         const button = document.createElement('button');
         button.type = 'button';
         button.textContent = label;
@@ -386,14 +391,20 @@ const setupJournalEntries = () => {
         actions.append(actionButton('View', 'view', entry));
 
         if (entry.status === 'Draft' && canMutate) {
-            actions.append(actionButton('Edit', 'edit', entry), actionButton('Submit', 'submit', entry, 'bg-blue-50 text-blue-700 hover:bg-blue-100'), actionButton('Delete', 'delete', entry, 'text-red-600 hover:bg-red-50'));
+            actions.append(actionButton('Edit', 'edit', entry), actionButton('Submit', 'submit', entry, 'bg-blue-50 text-blue-700 hover:bg-blue-100'), actionButton('Delete', 'delete', entry, 'bg-red-50 text-red-600 hover:bg-red-100'));
         } else if (entry.status === 'For Review' && canApprove) {
             actions.append(actionButton('Return', 'return', entry, 'bg-amber-50 text-amber-700 hover:bg-amber-100'), actionButton('Post', 'post', entry, 'bg-blue-600 text-white hover:bg-blue-500'));
         } else if (entry.status === 'Posted') {
-            actions.append(actionButton('Print', 'print', entry));
-            if (canApprove && !entry.reversal_of) actions.append(actionButton('Reverse', 'reverse', entry, 'text-red-600 hover:bg-red-50'));
+            actions.append(
+                actionButton('Print', 'print', entry, 'hidden bg-slate-100 text-slate-700 hover:bg-slate-200 sm:inline-flex'),
+                actionButton('Export PDF', 'pdf', entry, 'inline-flex bg-blue-50 text-blue-700 hover:bg-blue-100 sm:hidden'),
+            );
+            if (canApprove && !entry.reversal_of) actions.append(actionButton('Reverse', 'reverse', entry, 'bg-red-50 text-red-600 hover:bg-red-100'));
         } else if (entry.status === 'Reversed') {
-            actions.append(actionButton('Print', 'print', entry));
+            actions.append(
+                actionButton('Print', 'print', entry, 'hidden bg-slate-100 text-slate-700 hover:bg-slate-200 sm:inline-flex'),
+                actionButton('Export PDF', 'pdf', entry, 'inline-flex bg-blue-50 text-blue-700 hover:bg-blue-100 sm:hidden'),
+            );
         }
 
         actionsCell.append(actions);
@@ -430,12 +441,15 @@ const setupJournalEntries = () => {
     };
 
     const updateExport = () => {
-        const url = new URL(exportLink.href);
-        url.search = '';
-        if (searchInput.value.trim()) url.searchParams.set('search', searchInput.value.trim());
+        const search = searchInput.value.trim();
         const status = activeStatus || statusFilter.value;
-        if (status) url.searchParams.set('status', status);
-        exportLink.href = url.toString();
+        [exportLink, pdfExportLink].forEach((link) => {
+            const url = new URL(link.href);
+            url.search = '';
+            if (search) url.searchParams.set('search', search);
+            if (status) url.searchParams.set('status', status);
+            link.href = url.toString();
+        });
     };
 
     const renderEntries = () => {
@@ -506,6 +520,7 @@ const setupJournalEntries = () => {
         if (button.dataset.action === 'view') fillForm(entry, true);
         else if (button.dataset.action === 'edit') fillForm(entry, false);
         else if (button.dataset.action === 'print') window.open(endpoint(page.dataset.printUrlTemplate, entry.journal_number), '_blank', 'noopener');
+        else if (button.dataset.action === 'pdf') window.location.assign(endpoint(page.dataset.pdfUrlTemplate, entry.journal_number));
         else runAction(entry, button.dataset.action);
     });
     tabs.addEventListener('click', (event) => {
@@ -539,7 +554,19 @@ const setupJournalEntries = () => {
     modal.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') closeModal();
     });
-    document.querySelector('#journal-print-list').addEventListener('click', () => window.print());
+    window.addEventListener('beforeprint', () => {
+        const filtered = filteredEntries();
+        tableBody.replaceChildren();
+        if (filtered.length === 0) {
+            const row = document.createElement('tr');
+            const cell = addCell(row, 'No journal entries match the current filters.', 'px-4 py-10 text-center text-xs text-slate-500');
+            cell.colSpan = 8;
+            tableBody.append(row);
+        } else {
+            filtered.forEach((entry) => tableBody.append(createRow(entry)));
+        }
+    });
+    window.addEventListener('afterprint', renderEntries);
     renderEntries();
     const requestedEntry = new URLSearchParams(window.location.search).get('entry');
     const linkedEntry = entries.find((entry) => entry.journal_number === requestedEntry);

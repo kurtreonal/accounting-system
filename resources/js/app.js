@@ -95,5 +95,25 @@ const setupThemeToggle = () => {
     button.addEventListener('click', () => applyTheme(root.classList.contains('dark') ? 'light' : 'dark'));
 };
 
+const setupPagePrinting = () => {
+    const updateGeneratedTime = () => {
+        document.querySelectorAll('[data-print-generated]').forEach((element) => {
+            element.textContent = new Date().toLocaleString('en-PH', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+        });
+    };
+
+    document.querySelectorAll('[data-print-page]').forEach((button) => {
+        button.addEventListener('click', () => window.print());
+    });
+    window.addEventListener('beforeprint', updateGeneratedTime);
+};
+
 document.addEventListener('DOMContentLoaded', setupThemeToggle);
 document.addEventListener('DOMContentLoaded', setupSidebarToggle);
+document.addEventListener('DOMContentLoaded', setupPagePrinting);

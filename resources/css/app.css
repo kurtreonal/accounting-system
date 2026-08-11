@@ -494,7 +494,240 @@ html.dark a {
     transition-duration: 150ms;
 }
 
+.apm-print-header {
+    display: none;
+}
+
 @media print {
+    @page {
+        size: A4 landscape;
+        margin: 10mm;
+    }
+
+    html,
+    body {
+        width: auto !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        background: #fff !important;
+        color: #0f172a !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    #app-sidebar,
+    #sidebar-overlay,
+    #app-header {
+        display: none !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
+    #app-shell {
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .apm-print-header {
+        display: flex !important;
+        align-items: flex-end;
+        justify-content: space-between;
+        margin: 0 0 6mm;
+        padding: 0 0 3mm;
+        border-bottom: 1px solid #cbd5e1;
+    }
+
+    .apm-print-brand {
+        font-size: 12pt;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .apm-print-system,
+    .apm-print-title-block p {
+        margin-top: 1mm;
+        font-size: 8pt;
+        color: #64748b;
+    }
+
+    .apm-print-title-block {
+        text-align: right;
+    }
+
+    .apm-print-title-block h1 {
+        font-size: 14pt;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    main {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+
+    main input,
+    main select,
+    main textarea,
+    main [role='tablist'] {
+        display: none !important;
+    }
+
+    main .apm-outline-button,
+    main .apm-primary-button {
+        display: none !important;
+    }
+
+    main section,
+    main article,
+    main .apm-summary-card,
+    main .dashboard-enter {
+        box-shadow: none !important;
+        filter: none !important;
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    main .overflow-x-auto,
+    main .overflow-y-auto,
+    main .overflow-hidden {
+        overflow: visible !important;
+    }
+
+    main table {
+        width: 100% !important;
+        min-width: 0 !important;
+        table-layout: auto;
+        font-size: 8pt !important;
+    }
+
+    main th,
+    main td,
+    .apm-table-row > td {
+        padding: 2mm 2.2mm !important;
+    }
+
+    main thead {
+        display: table-header-group;
+    }
+
+    main tfoot {
+        display: table-footer-group;
+    }
+
+    main tr,
+    main article,
+    main .apm-summary-card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    #chart-of-accounts-page table th:last-child,
+    #chart-of-accounts-page table td:last-child,
+    #journal-entries-page table th:last-child,
+    #journal-entries-page table td:last-child {
+        display: none !important;
+    }
+
+    #dashboard-page .apm-summary-card,
+    #chart-of-accounts-page .apm-summary-card,
+    #general-ledger-page .apm-summary-card {
+        border: 1px solid #cbd5e1 !important;
+        background: #fff !important;
+    }
+
+    html.dark .apm-print-brand,
+    html.dark .apm-print-title-block h1,
+    main .apm-summary-card strong {
+        color: #0f172a !important;
+    }
+
+    main .apm-summary-card p,
+    main .apm-summary-card > span {
+        color: #64748b !important;
+    }
+
+    html.dark .ledger-opening-balance,
+    .ledger-opening-balance {
+        border-color: #cbd5e1 !important;
+        background: #f8fafc !important;
+        box-shadow: none !important;
+        color: #0f172a !important;
+    }
+
+    html.dark .ledger-opening-balance td:first-child,
+    html.dark .ledger-opening-balance td:last-child {
+        color: #0f172a !important;
+    }
+
+    #dashboard-page > section[aria-label='Financial overview'] {
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 3mm !important;
+        margin-top: 0 !important;
+    }
+
+    #dashboard-page > section[aria-label='Financial overview'] .apm-summary-card,
+    #chart-of-accounts-page .apm-summary-card,
+    #general-ledger-page .apm-summary-card {
+        min-height: 0 !important;
+        padding: 3mm !important;
+    }
+
+    #dashboard-page > section:nth-of-type(2) {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) !important;
+        gap: 3mm !important;
+        margin-top: 3mm !important;
+    }
+
+    #dashboard-page > section:nth-of-type(2) > article:first-child {
+        grid-column: auto !important;
+    }
+
+    #dashboard-page > section:nth-of-type(2) svg {
+        width: 100% !important;
+        min-width: 0 !important;
+        height: 50mm !important;
+    }
+
+    #dashboard-page > section:nth-of-type(2) header,
+    #dashboard-page > section:last-of-type header {
+        padding: 3mm 4mm !important;
+    }
+
+    #dashboard-page > section:nth-of-type(2) > article:last-child > div {
+        padding: 4mm !important;
+    }
+
+    #dashboard-page > section:last-of-type {
+        margin-top: 3mm !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    #chart-of-accounts-page > section[aria-label='Account type summaries'] {
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 3mm !important;
+        max-width: none !important;
+        margin-top: 3mm !important;
+        padding-bottom: 0 !important;
+    }
+
+    #chart-of-accounts-page > section[aria-label='Account type summaries'] > article {
+        grid-column: auto !important;
+    }
+
+    a {
+        color: #0f172a !important;
+        text-decoration: none !important;
+    }
+
     html.dark,
     html.dark body {
         color-scheme: light;

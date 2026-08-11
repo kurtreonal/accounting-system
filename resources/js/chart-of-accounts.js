@@ -369,6 +369,19 @@ const setupChartOfAccounts = () => {
     modal.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && !submitting) closeModal();
     });
+    window.addEventListener('beforeprint', () => {
+        const filtered = filteredAccounts();
+        tableBody.replaceChildren();
+        if (filtered.length === 0) {
+            const row = document.createElement('tr');
+            const cell = addCell(row, 'No accounts match the current filters.', 'px-4 py-10 text-center text-xs text-slate-500');
+            cell.colSpan = 7;
+            tableBody.append(row);
+        } else {
+            filtered.forEach((account) => tableBody.append(createAccountRow(account)));
+        }
+    });
+    window.addEventListener('afterprint', renderAccounts);
     renderAccounts();
 };
 

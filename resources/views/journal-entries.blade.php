@@ -10,8 +10,9 @@
     data-post-url-template="{{ route('journal-entries.post', ['journalNumber' => '__NUMBER__']) }}"
     data-reverse-url-template="{{ route('journal-entries.reverse', ['journalNumber' => '__NUMBER__']) }}"
     data-print-url-template="{{ route('journal-entries.print', ['journalNumber' => '__NUMBER__']) }}"
+    data-pdf-url-template="{{ route('journal-entries.pdf', ['journalNumber' => '__NUMBER__']) }}"
     data-user-role="{{ $user['role'] }}">
-    <div class="dashboard-enter">
+    <div class="dashboard-enter print:hidden">
         <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-xs text-slate-500">
             <span>Accounting</span><span class="text-slate-300">/</span><span class="font-medium text-slate-700">Journal Entries</span>
         </nav>
@@ -44,7 +45,8 @@
             </div>
             <div class="flex gap-2 print:hidden">
                 <a id="journal-export" href="{{ route('journal-entries.export.csv') }}" class="apm-outline-button">Export CSV</a>
-                <button id="journal-print-list" type="button" class="apm-outline-button">Print</button>
+                <a id="journal-export-pdf" href="{{ route('journal-entries.export.pdf') }}" class="apm-primary-button sm:hidden" download>Export PDF</a>
+                <button id="journal-print-list" type="button" class="apm-outline-button hidden sm:inline-flex" data-print-page>Print</button>
             </div>
         </header>
 
@@ -112,6 +114,7 @@
 
             <footer class="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-slate-100 bg-white px-5 py-4 shadow-[0_-4px_12px_rgba(15,23,42,0.04)]">
                 <button type="button" class="apm-outline-button" data-journal-close>Cancel</button>
+                <a id="journal-modal-pdf" href="#" class="apm-primary-button hidden sm:hidden" download>Export PDF</a>
                 <a id="journal-modal-print" href="#" target="_blank" rel="noopener" class="apm-outline-button hidden">Print</a>
                 <button id="save-journal-draft" type="submit" class="apm-outline-button">Save Draft</button>
                 <button id="save-submit-journal" type="button" class="apm-primary-button">Save &amp; Submit for Review</button>

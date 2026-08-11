@@ -16,6 +16,7 @@ const setupGeneralLedger = () => {
     const tableBody = document.querySelector('#ledger-table-body');
     const error = document.querySelector('#ledger-error');
     const exportLink = document.querySelector('#ledger-export');
+    const pdfExportLink = document.querySelector('#ledger-export-pdf');
     const printButton = document.querySelector('#ledger-print');
     const pagination = document.querySelector('#ledger-pagination');
     let searchTimer;
@@ -38,6 +39,7 @@ const setupGeneralLedger = () => {
     const updateUrls = () => {
         if (!selectedCode) return;
         exportLink.href = `${page.dataset.exportUrl}?${query()}`;
+        pdfExportLink.href = `${page.dataset.pdfUrl}?${query()}`;
         const browserUrl = new URL(window.location.href);
         browserUrl.search = query().toString();
         window.history.replaceState({}, '', browserUrl);
@@ -123,7 +125,7 @@ const setupGeneralLedger = () => {
         document.querySelector('#ledger-total-debit').textContent = money.format(Number(report.total_debit));
         document.querySelector('#ledger-total-credit').textContent = money.format(Number(report.total_credit));
         document.querySelector('#ledger-record-count').textContent = rows.length === 0 ? 'Showing 0 records' : `Showing ${start + 1}-${start + visible.length} of ${rows.length} records`;
-        document.querySelector('#ledger-print-context').textContent = `Period: ${dateFrom.value || 'Beginning'} to ${dateTo.value || 'Present'} · Generated ${new Date().toLocaleString('en-PH')}`;
+        document.querySelector('#ledger-print-context').textContent = `Period: ${dateFrom.value || 'Beginning'} to ${dateTo.value || 'Present'}`;
         renderPagination(pageCount);
         updateUrls();
     };
@@ -185,7 +187,6 @@ const setupGeneralLedger = () => {
         entrySearch.value = '';
         load();
     });
-    printButton?.addEventListener('click', () => window.print());
     window.addEventListener('beforeprint', () => {
         if (report) renderRows(report.rows || []);
     });

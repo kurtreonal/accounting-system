@@ -6,7 +6,7 @@
     data-update-url-template="{{ route('chart-of-accounts.update', ['code' => '__CODE__']) }}"
     data-status-url-template="{{ route('chart-of-accounts.status', ['code' => '__CODE__']) }}"
     data-delete-url-template="{{ route('chart-of-accounts.destroy', ['code' => '__CODE__']) }}">
-    <div class="dashboard-enter">
+    <div class="dashboard-enter print:hidden">
         <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-xs text-slate-500"><span>Accounting</span><span class="text-slate-300">/</span><span class="font-medium text-slate-700">Chart of Accounts</span></nav>
         <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div><h1 class="text-xl font-bold text-slate-900">Chart of Accounts</h1><p class="mt-1 text-sm text-slate-500">Manage your accounting structure and account codes</p></div>
@@ -18,11 +18,12 @@
         <header class="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div><h2 class="text-sm font-semibold text-slate-900">All Accounts</h2><p id="account-count" class="mt-0.5 text-xs text-slate-500">{{ $totalAccounts }} accounts</p></div>
             <div class="flex gap-2">
+                <button type="button" class="apm-outline-button" data-print-page>Print</button>
                 <a id="accounts-export-csv" href="{{ route('chart-of-accounts.export.csv') }}" class="apm-outline-button">Export CSV</a>
                 <a id="accounts-export-pdf" href="{{ route('chart-of-accounts.export.pdf') }}" target="_blank" rel="noopener" class="apm-outline-button">Export PDF</a>
             </div>
         </header>
-        <div class="flex flex-col gap-2 border-b border-slate-100 px-4 py-3 sm:flex-row">
+        <div class="flex flex-col gap-2 border-b border-slate-100 px-4 py-3 sm:flex-row print:hidden">
             <label class="relative sm:w-60"><span class="sr-only">Search accounts</span><svg class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-4-4"/></svg><input id="account-search" type="search" class="h-9 w-full rounded-lg border border-slate-200 bg-white pr-3 pl-9 text-xs outline-none transition duration-150 focus:border-blue-400 focus:ring-3 focus:ring-blue-100"></label>
             <select id="account-type-filter" aria-label="Account type" class="h-9 rounded-lg border border-slate-200 bg-white px-4 text-xs text-slate-700 outline-none transition duration-150 focus:border-blue-400 focus:ring-3 focus:ring-blue-100"><option value="">All Types</option><option>Asset</option><option>Liability</option><option>Equity</option><option>Revenue</option><option>Expense</option></select>
             <select id="account-status-filter" aria-label="Account status" class="h-9 rounded-lg border border-slate-200 bg-white px-4 text-xs text-slate-700 outline-none transition duration-150 focus:border-blue-400 focus:ring-3 focus:ring-blue-100"><option value="">All Status</option><option>Active</option><option>Inactive</option></select>
@@ -47,7 +48,7 @@
                 </tbody>
             </table>
         </div>
-        <footer class="flex flex-col gap-3 border-t border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><p id="accounts-record-count" class="text-xs text-slate-500">Showing 1–{{ count($accounts) }} of {{ $totalAccounts }} records</p><div id="accounts-pagination" class="flex items-center gap-1" aria-label="Account table pagination"></div></footer>
+        <footer class="flex flex-col gap-3 border-t border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between print:hidden"><p id="accounts-record-count" class="text-xs text-slate-500">Showing 1–{{ count($accounts) }} of {{ $totalAccounts }} records</p><div id="accounts-pagination" class="flex items-center gap-1" aria-label="Account table pagination"></div></footer>
     </section>
     <section aria-label="Account type summaries" class="mx-auto mt-4 grid max-w-[1088px] grid-cols-1 gap-3 pb-8 sm:grid-cols-2 xl:grid-cols-5">
         @foreach (['Asset', 'Liability', 'Equity', 'Revenue', 'Expense'] as $type)

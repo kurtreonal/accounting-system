@@ -19,7 +19,9 @@ Route::patch('/chart-of-accounts/{code}/status', [ChartOfAccountsController::cla
 Route::delete('/chart-of-accounts/{code}', [ChartOfAccountsController::class, 'destroy'])->name('chart-of-accounts.destroy');
 Route::get('/journal-entries', [JournalEntryController::class, 'index'])->name('journal-entries');
 Route::get('/journal-entries/export/csv', [JournalEntryController::class, 'csv'])->name('journal-entries.export.csv');
+Route::get('/journal-entries/export/pdf', [JournalEntryController::class, 'pdf'])->name('journal-entries.export.pdf');
 Route::get('/journal-entries/{journalNumber}/print', [JournalEntryController::class, 'print'])->name('journal-entries.print');
+Route::get('/journal-entries/{journalNumber}/pdf', [JournalEntryController::class, 'entryPdf'])->name('journal-entries.pdf');
 Route::post('/journal-entries', [JournalEntryController::class, 'store'])->name('journal-entries.store');
 Route::put('/journal-entries/{journalNumber}', [JournalEntryController::class, 'update'])->name('journal-entries.update');
 Route::delete('/journal-entries/{journalNumber}', [JournalEntryController::class, 'destroy'])->name('journal-entries.destroy');
@@ -30,6 +32,7 @@ Route::post('/journal-entries/{journalNumber}/reverse', [JournalEntryController:
 Route::get('/general-ledger', [GeneralLedgerController::class, 'index'])->name('general-ledger');
 Route::get('/general-ledger/data', [GeneralLedgerController::class, 'data'])->name('general-ledger.data');
 Route::get('/general-ledger/export/csv', [GeneralLedgerController::class, 'csv'])->name('general-ledger.export.csv');
+Route::get('/general-ledger/export/pdf', [GeneralLedgerController::class, 'pdf'])->name('general-ledger.export.pdf');
 Route::get('/chart-of-accounts/export/pdf', [ChartOfAccountsExportController::class, 'pdf'])->name('chart-of-accounts.export.pdf');
 Route::get('/chart-of-accounts/export/csv', [ChartOfAccountsExportController::class, 'csv'])->name('chart-of-accounts.export.csv');
 Route::post('/logout', [DemoAuthController::class, 'logout'])->name('logout');

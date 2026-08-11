@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Services\Accounting\GeneralLedgerService;
+use App\Services\Exports\AccountingPdfExportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GeneralLedgerController extends Controller
@@ -99,5 +101,36 @@ class GeneralLedgerController extends Controller
 
             fclose($output);
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function pdf(
+        Request $request,
+        GeneralLedgerService $ledger,
+        AccountingPdfExportService $exports,
+    ): Response|RedirectResponse {
+        if (! $request->session()->has('demo_user')) {
+            return redirect()->route('login');
+        }
+
+        try {
+            $report = $ledger->forAccount(
+                (string) $request->query('account', ''),
+                $request->query('date_from'),
+                $request->query('date_to'),
+                (string) $request->query('search', ''),
+            );
+        } catch (RuntimeException $exception) {
+            abort(422, $exception->getMessage());
+        }
+
+        $content = $exports->generalLedger($report, now());
+        $filename = 'general-ledger-'.$report['account']['code'].'-'.now()->format('Y-m-d').'.pdf';
+
+        return response($content, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+            'Content-Length' => (string) strlen($content),
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 }

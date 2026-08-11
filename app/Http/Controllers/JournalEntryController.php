@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\DemoData\AccountDataService;
 use App\Services\DemoData\AuditLogDataService;
 use App\Services\DemoData\JournalEntryDataService;
+use App\Services\Exports\AccountingPdfExportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class JournalEntryController extends Controller
@@ -249,6 +251,46 @@ class JournalEntryController extends Controller
         return view('journal-entry-print', ['entry' => $entry]);
     }
 
+    public function pdf(
+        Request $request,
+        JournalEntryDataService $journals,
+        AccountingPdfExportService $exports,
+    ): Response|RedirectResponse {
+        if (! $request->session()->has('demo_user')) {
+            return redirect()->route('login');
+        }
+
+        $entries = $this->filtered($journals->all(), $request);
+        $content = $exports->journalEntries($entries, [
+            'search' => trim((string) $request->query('search', '')),
+            'status' => trim((string) $request->query('status', '')),
+        ], now());
+
+        return $this->pdfDownload($content, 'journal-entries-'.now()->format('Y-m-d').'.pdf');
+    }
+
+    public function entryPdf(
+        Request $request,
+        string $journalNumber,
+        JournalEntryDataService $journals,
+        AccountingPdfExportService $exports,
+    ): Response|RedirectResponse {
+        if (! $request->session()->has('demo_user')) {
+            return redirect()->route('login');
+        }
+
+        try {
+            $entry = $journals->find($journalNumber);
+        } catch (RuntimeException) {
+            abort(404, 'The journal entry could not be found.');
+        }
+
+        return $this->pdfDownload(
+            $exports->journalEntry($entry, now()),
+            $entry['journal_number'].'.pdf',
+        );
+    }
+
     /** @return array<string, mixed>|JsonResponse */
     private function validateEntry(Request $request, AccountDataService $accounts): array|JsonResponse
     {
@@ -403,5 +445,15 @@ class JournalEntryController extends Controller
         $status = $exception->getMessage() === 'The journal entry could not be found.' ? 404 : 409;
 
         return response()->json(['message' => $exception->getMessage()], $status);
+    }
+
+    private function pdfDownload(string $content, string $filename): Response
+    {
+        return response($content, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+            'Content-Length' => (string) strlen($content),
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 }

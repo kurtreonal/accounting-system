@@ -149,6 +149,18 @@ class JournalEntryManagementTest extends TestCase
             ->assertOk()
             ->assertSee($number)
             ->assertSee('PHP 500.00');
+
+        $listPdf = $this->withSession($viewer)->get(route('journal-entries.export.pdf'));
+        $listPdf->assertOk()
+            ->assertHeader('content-type', 'application/pdf')
+            ->assertDownload('journal-entries-'.now()->format('Y-m-d').'.pdf');
+        $this->assertStringStartsWith('%PDF-', $listPdf->getContent());
+
+        $entryPdf = $this->withSession($viewer)->get(route('journal-entries.pdf', $number));
+        $entryPdf->assertOk()
+            ->assertHeader('content-type', 'application/pdf')
+            ->assertDownload($number.'.pdf');
+        $this->assertStringStartsWith('%PDF-', $entryPdf->getContent());
     }
 
     /** @return array<string, mixed> */

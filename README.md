@@ -1,6 +1,6 @@
 # APM Customs Accounting System
 
-Laravel, Blade, and JavaScript accounting demonstration using JSON files instead of a database. Built from [`instructions.md`](instructions.md) for OJT demonstrations and internal testing.
+Laravel, Blade, and JavaScript accounting demonstration using JSON files.
 
 ## Requirements
 
@@ -19,7 +19,7 @@ npm run build
 php artisan serve
 ```
 
-Open `http://localhost:8000`. Demo users and password hashes are stored in `storage/demo-data/users.json`. Obtain plaintext demo credentials from the project supervisor; do not commit them.
+Open `http://localhost:8000`.
 
 For local development on the configured Windows/Herd environment:
 

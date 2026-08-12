@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Services\Accounting\AccountingPostingService;
 use App\Services\DemoData\SalesDataService;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -101,6 +102,16 @@ class AccountsReceivableTest extends TestCase
             'reference' => 'DEP-001',
             'memo' => 'Partial collection',
             'allocations' => [['invoice_number' => 'INV-2026-0001', 'amount' => 400]],
+            'posting' => [
+                'engine' => 'accounting-v1',
+                'source_key' => 'customer-payment:'.$requestToken,
+                'date' => '2026-08-11',
+                'source_type' => 'Payment',
+                'lines' => [
+                    ['account_code' => '1000', 'debit' => 400, 'credit' => 0],
+                    ['account_code' => '1100', 'debit' => 0, 'credit' => 400],
+                ],
+            ],
         ];
 
         $this->withSession($this->demoSession())->postJson('/accounts-receivable/payments', $payload)
@@ -109,7 +120,9 @@ class AccountsReceivableTest extends TestCase
             ->assertJsonPath('payment.amount', 400)
             ->assertJsonPath('journal.status', 'Posted')
             ->assertJsonPath('journal.total_debit', 400)
-            ->assertJsonPath('journal.total_credit', 400);
+            ->assertJsonPath('journal.total_credit', 400)
+            ->assertJsonPath('journal.source_key', 'customer-payment:'.$requestToken)
+            ->assertJsonPath('journal.posting_engine', 'accounting-v1');
 
         $invoice = app(SalesDataService::class)->findInvoice('INV-2026-0001');
         $this->assertSame(400.0, (float) $invoice['amount_paid']);
@@ -124,6 +137,46 @@ class AccountsReceivableTest extends TestCase
             ->assertStatus(409)
             ->assertJsonPath('message', 'This payment request was already posted.');
         $this->assertCount(1, json_decode(file_get_contents($this->paths['payments']), true, flags: JSON_THROW_ON_ERROR));
+    }
+
+    public function test_full_payment_marks_invoice_paid_with_zero_balance(): void
+    {
+        $this->withSession($this->demoSession())->postJson('/accounts-receivable/payments', [
+            'request_token' => (string) Str::uuid(),
+            'customer_id' => 1,
+            'payment_date' => '2026-08-11',
+            'cash_account_code' => '1000',
+            'reference' => 'DEP-FULL',
+            'allocations' => [['invoice_number' => 'INV-2026-0001', 'amount' => 1000]],
+        ])->assertCreated();
+
+        $invoice = app(SalesDataService::class)->findInvoice('INV-2026-0001');
+        $this->assertSame(1000.0, (float) $invoice['amount_paid']);
+        $this->assertSame(0.0, (float) $invoice['remaining_balance']);
+        $this->assertSame('Paid', $invoice['display_status']);
+    }
+
+    public function test_shared_posting_gate_reuses_source_journal_without_applying_balances_twice(): void
+    {
+        $posting = app(AccountingPostingService::class);
+        $customer = app(SalesDataService::class)->customers()[0];
+        $payment = [
+            'request_token' => (string) Str::uuid(),
+            'payment_date' => '2026-08-11',
+            'cash_account_code' => '1000',
+            'reference' => 'RECOVERY-TEST',
+            'amount' => 200,
+        ];
+        $actor = $this->demoSession()['demo_user'];
+
+        $first = $posting->postCustomerPayment($customer, $payment, $actor);
+        $second = $posting->postCustomerPayment($customer, $payment, $actor);
+
+        $this->assertSame($first['journal_number'], $second['journal_number']);
+        $this->assertCount(1, json_decode(file_get_contents($this->paths['journals']), true, flags: JSON_THROW_ON_ERROR));
+        $accounts = json_decode(file_get_contents($this->paths['accounts']), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame(200.0, (float) $accounts[0]['balance']);
+        $this->assertSame(800.0, (float) $accounts[1]['balance']);
     }
 
     public function test_overpayment_and_roles_are_blocked_and_csv_exports_current_balance(): void

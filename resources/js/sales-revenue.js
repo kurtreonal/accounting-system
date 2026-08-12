@@ -1,3 +1,5 @@
+import { createPosting, documentTotals } from './accounting-engine';
+
 const setupSalesRevenue = () => {
     const page = document.querySelector('#sales-revenue-page');
     const dataElement = document.querySelector('#sales-data');
@@ -70,21 +72,20 @@ const setupSalesRevenue = () => {
     };
 
     const calculateLines = () => {
-        let subtotal = 0;
-        let tax = 0;
-        linesBody.querySelectorAll('tr').forEach((row) => {
-            const quantity = Number(row.querySelector('[data-line="quantity"]').value || 0);
-            const price = Number(row.querySelector('[data-line="unit_price"]').value || 0);
-            const rate = Number(row.querySelector('[data-line="tax_rate"]').value || 0);
-            const lineSubtotal = quantity * price;
-            const lineTax = lineSubtotal * (rate / 100);
-            subtotal += lineSubtotal;
-            tax += lineTax;
-            row.querySelector('[data-line-total]').textContent = money.format(lineSubtotal + lineTax);
+        const rows = [...linesBody.querySelectorAll('tr')];
+        const totals = documentTotals(rows.map((row) => ({
+            quantity: row.querySelector('[data-line="quantity"]').value,
+            unit_price: row.querySelector('[data-line="unit_price"]').value,
+            tax_rate: row.querySelector('[data-line="tax_rate"]').value,
+        })));
+        rows.forEach((row, index) => {
+            row.querySelector('[data-line-total]').textContent = money.format(totals.lines[index].total);
         });
-        document.querySelector('#invoice-subtotal').textContent = money.format(subtotal);
-        document.querySelector('#invoice-tax').textContent = money.format(tax);
-        document.querySelector('#invoice-total').textContent = money.format(subtotal + tax);
+        document.querySelector('#invoice-subtotal').textContent = money.format(totals.subtotal);
+        document.querySelector('#invoice-tax').textContent = money.format(totals.tax);
+        document.querySelector('#invoice-total').textContent = money.format(totals.total);
+
+        return totals;
     };
 
     const addLine = () => {
@@ -111,7 +112,9 @@ const setupSalesRevenue = () => {
         const original = button.innerHTML;
         button.textContent = 'Posting...';
         try {
-            await request(endpoint(page.dataset.postUrlTemplate, invoiceNumber), { method: 'POST', body: '{}' });
+            const invoice = data.invoices.find((item) => item.invoice_number === invoiceNumber);
+            const posting = createPosting('credit-sale', invoice, data.accounts || []);
+            await request(endpoint(page.dataset.postUrlTemplate, invoiceNumber), { method: 'POST', body: JSON.stringify({ posting }) });
             window.location.reload();
         } catch (problem) {
             button.disabled = false;
@@ -191,7 +194,8 @@ const setupSalesRevenue = () => {
             const result = await request(page.dataset.invoiceUrl, { method: 'POST', body: JSON.stringify(invoicePayload()) });
             savedInvoice = result.invoice;
             if (submitIntent === 'post') {
-                await request(endpoint(page.dataset.postUrlTemplate, result.invoice.invoice_number), { method: 'POST', body: '{}' });
+                const posting = createPosting('credit-sale', result.invoice, data.accounts || []);
+                await request(endpoint(page.dataset.postUrlTemplate, result.invoice.invoice_number), { method: 'POST', body: JSON.stringify({ posting }) });
             }
             showMessage(invoiceForm, submitIntent === 'post' ? 'Invoice posted.' : 'Invoice saved as draft.', true);
             window.setTimeout(() => window.location.reload(), 500);

@@ -5,70 +5,15 @@
         "actor_name": "Matavia",
         "actor_role": "Administrator",
         "action": "created",
-        "resource": "journal_entry",
-        "resource_id": "JE-2026-0001",
-        "details": [],
-        "created_at": "2026-08-11T06:53:26+00:00"
-    },
-    {
-        "id": 2,
-        "actor_user_id": 1,
-        "actor_name": "Matavia",
-        "actor_role": "Administrator",
-        "action": "submitted_for_review",
-        "resource": "journal_entry",
-        "resource_id": "JE-2026-0001",
-        "details": [],
-        "created_at": "2026-08-11T06:53:26+00:00"
-    },
-    {
-        "id": 3,
-        "actor_user_id": 1,
-        "actor_name": "Matavia",
-        "actor_role": "Administrator",
-        "action": "returned_to_draft",
-        "resource": "journal_entry",
-        "resource_id": "JE-2026-0001",
-        "details": [],
-        "created_at": "2026-08-11T06:54:19+00:00"
-    },
-    {
-        "id": 4,
-        "actor_user_id": 1,
-        "actor_name": "Matavia",
-        "actor_role": "Administrator",
-        "action": "submitted_for_review",
-        "resource": "journal_entry",
-        "resource_id": "JE-2026-0001",
-        "details": [],
-        "created_at": "2026-08-11T06:54:28+00:00"
-    },
-    {
-        "id": 5,
-        "actor_user_id": 1,
-        "actor_name": "Matavia",
-        "actor_role": "Administrator",
-        "action": "posted",
-        "resource": "journal_entry",
-        "resource_id": "JE-2026-0001",
-        "details": [],
-        "created_at": "2026-08-11T06:54:40+00:00"
-    },
-    {
-        "id": 6,
-        "actor_user_id": 1,
-        "actor_name": "Matavia",
-        "actor_role": "Administrator",
-        "action": "created",
         "resource": "customer",
         "resource_id": "1",
         "details": {
-            "code": "NEX-001"
+            "code": "CUST-001"
         },
-        "created_at": "2026-08-11T07:58:31+00:00"
+        "created_at": "2026-08-12T13:41:06+00:00"
     },
     {
-        "id": 7,
+        "id": 2,
         "actor_user_id": 1,
         "actor_name": "Matavia",
         "actor_role": "Administrator",
@@ -76,23 +21,25 @@
         "resource": "sales_invoice",
         "resource_id": "INV-2026-0001",
         "details": [],
-        "created_at": "2026-08-11T08:00:05+00:00"
+        "created_at": "2026-08-12T13:42:54+00:00"
     },
     {
-        "id": 8,
+        "id": 3,
         "actor_user_id": 1,
         "actor_name": "Matavia",
         "actor_role": "Administrator",
-        "action": "posted_from_invoice",
+        "action": "posted_from_source",
         "resource": "journal_entry",
-        "resource_id": "JE-2026-0002",
+        "resource_id": "JE-2026-0001",
         "details": {
-            "invoice_number": "INV-2026-0001"
+            "invoice_number": "INV-2026-0001",
+            "source_key": "invoice:INV-2026-0001",
+            "posting_engine": "accounting-v1"
         },
-        "created_at": "2026-08-11T08:05:35+00:00"
+        "created_at": "2026-08-12T13:43:30+00:00"
     },
     {
-        "id": 9,
+        "id": 4,
         "actor_user_id": 1,
         "actor_name": "Matavia",
         "actor_role": "Administrator",
@@ -100,8 +47,218 @@
         "resource": "sales_invoice",
         "resource_id": "INV-2026-0001",
         "details": {
-            "journal_entry_id": "JE-2026-0002"
+            "journal_entry_id": "JE-2026-0001"
         },
-        "created_at": "2026-08-11T08:05:35+00:00"
+        "created_at": "2026-08-12T13:43:30+00:00"
+    },
+    {
+        "id": 5,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "posted_from_source",
+        "resource": "journal_entry",
+        "resource_id": "JE-2026-0002",
+        "details": {
+            "request_token": "3bbe77e7-f845-49b1-956b-993b076d2cc7",
+            "customer_id": 1,
+            "source_key": "customer-payment:3bbe77e7-f845-49b1-956b-993b076d2cc7",
+            "posting_engine": "accounting-v1"
+        },
+        "created_at": "2026-08-12T13:52:14+00:00"
+    },
+    {
+        "id": 6,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "posted_customer_payment",
+        "resource": "customer_payment",
+        "resource_id": "RCP-2026-0001",
+        "details": {
+            "journal_entry_id": "JE-2026-0002",
+            "amount": 5600,
+            "allocations": [
+                {
+                    "invoice_number": "INV-2026-0001",
+                    "invoice_total": 11200,
+                    "amount": 5600
+                }
+            ]
+        },
+        "created_at": "2026-08-12T13:52:14+00:00"
+    },
+    {
+        "id": 7,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "created",
+        "resource": "vendor",
+        "resource_id": "1",
+        "details": {
+            "code": "VEN-001"
+        },
+        "created_at": "2026-08-12T13:54:30+00:00"
+    },
+    {
+        "id": 8,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "updated",
+        "resource": "vendor",
+        "resource_id": "1",
+        "details": {
+            "code": "VEN-001"
+        },
+        "created_at": "2026-08-12T13:55:53+00:00"
+    },
+    {
+        "id": 9,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "created_draft",
+        "resource": "vendor_bill",
+        "resource_id": "BILL-2026-0001",
+        "details": [],
+        "created_at": "2026-08-12T13:58:17+00:00"
+    },
+    {
+        "id": 10,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "posted_from_source",
+        "resource": "journal_entry",
+        "resource_id": "JE-2026-0003",
+        "details": {
+            "bill_number": "BILL-2026-0001",
+            "source_key": "bill:BILL-2026-0001",
+            "posting_engine": "accounting-v1"
+        },
+        "created_at": "2026-08-12T14:00:16+00:00"
+    },
+    {
+        "id": 11,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "posted",
+        "resource": "vendor_bill",
+        "resource_id": "BILL-2026-0001",
+        "details": {
+            "journal_entry_id": "JE-2026-0003"
+        },
+        "created_at": "2026-08-12T14:00:16+00:00"
+    },
+    {
+        "id": 12,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "posted_from_source",
+        "resource": "journal_entry",
+        "resource_id": "JE-2026-0004",
+        "details": {
+            "request_token": "d141d3d4-0fd0-4e63-9258-c3f54733bd36",
+            "vendor_id": 1,
+            "source_key": "vendor-payment:d141d3d4-0fd0-4e63-9258-c3f54733bd36",
+            "posting_engine": "accounting-v1"
+        },
+        "created_at": "2026-08-12T14:05:08+00:00"
+    },
+    {
+        "id": 13,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "posted_vendor_payment",
+        "resource": "vendor_payment",
+        "resource_id": "VPY-2026-0001",
+        "details": {
+            "journal_entry_id": "JE-2026-0004",
+            "amount": 2240,
+            "allocations": [
+                {
+                    "bill_number": "BILL-2026-0001",
+                    "bill_total": 2240,
+                    "amount": 2240
+                }
+            ]
+        },
+        "created_at": "2026-08-12T14:05:08+00:00"
+    },
+    {
+        "id": 14,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "created",
+        "resource": "journal_entry",
+        "resource_id": "JE-2026-0005",
+        "details": [],
+        "created_at": "2026-08-12T14:08:26+00:00"
+    },
+    {
+        "id": 15,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "submitted_for_review",
+        "resource": "journal_entry",
+        "resource_id": "JE-2026-0005",
+        "details": [],
+        "created_at": "2026-08-12T14:08:26+00:00"
+    },
+    {
+        "id": 16,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "returned_to_draft",
+        "resource": "journal_entry",
+        "resource_id": "JE-2026-0005",
+        "details": [],
+        "created_at": "2026-08-12T14:08:47+00:00"
+    },
+    {
+        "id": 17,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "submitted_for_review",
+        "resource": "journal_entry",
+        "resource_id": "JE-2026-0005",
+        "details": [],
+        "created_at": "2026-08-12T14:08:53+00:00"
+    },
+    {
+        "id": 18,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "posted",
+        "resource": "journal_entry",
+        "resource_id": "JE-2026-0005",
+        "details": {
+            "posting_engine": "accounting-v1"
+        },
+        "created_at": "2026-08-12T14:08:59+00:00"
+    },
+    {
+        "id": 19,
+        "actor_user_id": 1,
+        "actor_name": "Matavia",
+        "actor_role": "Administrator",
+        "action": "reversed",
+        "resource": "journal_entry",
+        "resource_id": "JE-2026-0005",
+        "details": {
+            "reversal_entry_number": "JE-2026-0006",
+            "posting_engine": "accounting-v1"
+        },
+        "created_at": "2026-08-12T14:09:06+00:00"
     }
 ]

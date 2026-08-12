@@ -110,9 +110,10 @@ class JournalEntryDataService
     /** @param array<string, mixed> $actor
      * @return array<string, mixed>
      */
-    public function post(string $journalNumber, array $actor): array
+    public function post(string $journalNumber, array $actor, array $postingMetadata = []): array
     {
         return $this->changeStatus($journalNumber, 'For Review', 'Posted', [
+            ...$postingMetadata,
             'reviewed_by' => $this->actorSnapshot($actor),
             'reviewed_at' => now()->toIso8601String(),
             'posted_by' => $this->actorSnapshot($actor),
@@ -151,6 +152,8 @@ class JournalEntryDataService
                 'posted_by' => $this->actorSnapshot($actor),
                 'reversed_by' => null,
                 'reversal_of' => $original['journal_number'],
+                'source_key' => 'reversal:'.$original['journal_number'],
+                'posting_engine' => $original['posting_engine'] ?? 'accounting-v1',
                 'reversal_entry_number' => null,
                 'lines' => $reversalLines,
                 'created_at' => $now,

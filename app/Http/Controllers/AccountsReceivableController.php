@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Accounting\AccountingPostingService;
 use App\Services\DemoData\AccountDataService;
 use App\Services\DemoData\AuditLogDataService;
-use App\Services\DemoData\JournalEntryDataService;
 use App\Services\DemoData\SalesDataService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -29,7 +29,8 @@ class AccountsReceivableController extends Controller
         $openInvoices = collect($invoices)->filter(
             static fn (array $invoice): bool => $invoice['status'] !== 'Draft' && (float) $invoice['remaining_balance'] > 0
         );
-        $cashAccounts = collect($accounts->all(['status' => 'Active']))
+        $activeAccounts = collect($accounts->all(['status' => 'Active']));
+        $cashAccounts = $activeAccounts
             ->filter(fn (array $account): bool => $this->isCashOrBank($account))
             ->values()
             ->all();
@@ -40,6 +41,7 @@ class AccountsReceivableController extends Controller
             'customers' => $customers,
             'payments' => $sales->payments(),
             'cashAccounts' => $cashAccounts,
+            'postingAccounts' => $activeAccounts->values()->all(),
             'metrics' => [
                 'receivable' => round((float) $openInvoices->sum('remaining_balance'), 2),
                 'overdue' => round((float) $openInvoices->filter(static fn (array $invoice): bool => $invoice['due_date'] < $today)->sum('remaining_balance'), 2),
@@ -56,7 +58,7 @@ class AccountsReceivableController extends Controller
         Request $request,
         SalesDataService $sales,
         AccountDataService $accounts,
-        JournalEntryDataService $journals,
+        AccountingPostingService $posting,
         AuditLogDataService $auditLogs,
     ): JsonResponse {
         if ($response = $this->denyApproval($request)) {
@@ -94,14 +96,8 @@ class AccountsReceivableController extends Controller
         $cashAccount = $activeAccounts->first(
             fn (array $account): bool => (string) $account['code'] === (string) $validated['cash_account_code'] && $this->isCashOrBank($account)
         );
-        $receivableAccount = $activeAccounts->first(
-            fn (array $account): bool => $account['type'] === 'Asset' && str_contains(Str::lower($account['name']), 'receivable')
-        );
         if (! $cashAccount) {
             return $this->validationError(['cash_account_code' => ['Select an active cash or bank account.']]);
-        }
-        if (! $receivableAccount) {
-            return response()->json(['message' => 'Posting payment needs an active Accounts Receivable account.'], 409);
         }
 
         $invoices = collect($sales->invoices())->keyBy('invoice_number');
@@ -136,37 +132,10 @@ class AccountsReceivableController extends Controller
         $total = round($total, 2);
 
         try {
-            $journal = $journals->create([
-                'date' => $validated['payment_date'],
-                'reference' => trim((string) ($validated['reference'] ?? '')) ?: 'Customer payment',
-                'description' => 'Customer payment - '.$customer['name'],
-                'source_type' => 'Payment',
-                'lines' => [[
-                    'id' => 1,
-                    'account_code' => (string) $cashAccount['code'],
-                    'account_name' => $cashAccount['name'],
-                    'description' => 'Customer payment received',
-                    'party_reference' => $customer['code'],
-                    'cost_center' => '',
-                    'debit' => $total,
-                    'credit' => 0,
-                ], [
-                    'id' => 2,
-                    'account_code' => (string) $receivableAccount['code'],
-                    'account_name' => $receivableAccount['name'],
-                    'description' => 'Accounts receivable collection',
-                    'party_reference' => $customer['code'],
-                    'cost_center' => '',
-                    'debit' => 0,
-                    'credit' => $total,
-                ]],
-                'total_debit' => $total,
-                'total_credit' => $total,
-                'created_by' => $this->actorSnapshot($request),
-            ]);
-            $journals->submitForReview($journal['journal_number']);
-            $journal = $journals->post($journal['journal_number'], $this->actor($request));
-            $accounts->applyJournalLines($journal['lines']);
+            $journal = $posting->postCustomerPayment($customer, [
+                ...$validated,
+                'amount' => $total,
+            ], $this->actor($request), $request->input('posting'));
             $payment = $sales->createPayment([
                 'request_token' => $validated['request_token'],
                 'payment_date' => $validated['payment_date'],

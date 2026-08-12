@@ -1,1 +1,30 @@
-[]
+[
+    {
+        "id": 1,
+        "receipt_number": "RCP-2026-0001",
+        "request_token": "3bbe77e7-f845-49b1-956b-993b076d2cc7",
+        "payment_date": "2026-08-12",
+        "customer_id": 1,
+        "customer_code": "CUST-001",
+        "customer_name": "DEMO BUSINESS",
+        "cash_account_code": "1",
+        "cash_account_name": "Cash on Hand",
+        "reference": "OR-001",
+        "memo": "partial payment",
+        "amount": 5600,
+        "allocations": [
+            {
+                "invoice_number": "INV-2026-0001",
+                "invoice_total": 11200,
+                "amount": 5600
+            }
+        ],
+        "journal_entry_id": "JE-2026-0002",
+        "posted_by": {
+            "id": 1,
+            "name": "Matavia"
+        },
+        "created_at": "2026-08-12T13:52:14+00:00",
+        "updated_at": "2026-08-12T13:52:14+00:00"
+    }
+]

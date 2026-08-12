@@ -12,7 +12,7 @@
         <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div><h1 class="text-xl font-bold text-slate-900">Sales</h1><p class="mt-1 text-sm text-slate-500">Revenue overview and sales performance</p></div>
             <div class="flex gap-2">
-                <button id="manage-customers-button" type="button" class="apm-outline-button"><i class="fa-solid fa-users" aria-hidden="true"></i> Customers</button>
+                <button id="manage-customers-button" type="button" class="apm-outline-button"><i class="fa-solid fa-users" aria-hidden="true"></i>Add Customers</button>
                 <button id="new-invoice-button" type="button" class="apm-primary-button" @disabled($user['role'] === 'Viewer / Auditor') title="{{ $user['role'] === 'Viewer / Auditor' ? 'Viewer role has read-only access.' : 'Create sales invoice' }}"><i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i> New Invoice</button>
             </div>
         </div>
@@ -91,7 +91,7 @@
         </div>
     </section>
 
-    <script id="sales-data" type="application/json">@json(['customers' => $customers, 'invoices' => $invoices])</script>
+    <script id="sales-data" type="application/json">{!! Illuminate\Support\Js::encode(['customers' => $customers, 'invoices' => $invoices, 'accounts' => $postingAccounts]) !!}</script>
 </main>
 
 <div id="customers-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="customers-modal-title" aria-hidden="true">

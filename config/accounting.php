@@ -7,4 +7,7 @@ return [
     'customers_path' => storage_path('demo-data/customers.json'),
     'invoices_path' => storage_path('demo-data/invoices.json'),
     'customer_payments_path' => storage_path('demo-data/customer_payments.json'),
+    'vendors_path' => storage_path('demo-data/vendors.json'),
+    'bills_path' => storage_path('demo-data/bills.json'),
+    'vendor_payments_path' => storage_path('demo-data/vendor_payments.json'),
 ];

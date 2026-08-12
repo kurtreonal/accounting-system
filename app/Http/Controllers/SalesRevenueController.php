@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Accounting\AccountingPostingService;
 use App\Services\DemoData\AccountDataService;
 use App\Services\DemoData\AuditLogDataService;
-use App\Services\DemoData\JournalEntryDataService;
 use App\Services\DemoData\SalesDataService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -16,7 +16,7 @@ use RuntimeException;
 
 class SalesRevenueController extends Controller
 {
-    public function index(Request $request, SalesDataService $sales): View|RedirectResponse
+    public function index(Request $request, SalesDataService $sales, AccountDataService $accounts): View|RedirectResponse
     {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
@@ -57,6 +57,7 @@ class SalesRevenueController extends Controller
             'monthlyRevenueMax' => max([0, ...array_values($monthlyRevenue)]),
             'revenueByCustomer' => $revenueByCustomer,
             'customerRevenueMax' => max([0, ...array_column($revenueByCustomer, 'total')]),
+            'postingAccounts' => $accounts->all(['status' => 'Active']),
         ]);
     }
 
@@ -177,8 +178,7 @@ class SalesRevenueController extends Controller
         Request $request,
         string $invoiceNumber,
         SalesDataService $sales,
-        AccountDataService $accounts,
-        JournalEntryDataService $journals,
+        AccountingPostingService $posting,
         AuditLogDataService $auditLogs,
     ): JsonResponse {
         if ($response = $this->denyApproval($request)) {
@@ -191,73 +191,7 @@ class SalesRevenueController extends Controller
                 throw new RuntimeException('Only draft invoices can be posted.');
             }
 
-            $activeAccounts = collect($accounts->all(['status' => 'Active']));
-            $receivable = $activeAccounts->first(fn (array $account): bool => $account['type'] === 'Asset' && str_contains(Str::lower($account['name']), 'receivable'));
-            $revenue = $activeAccounts->first(fn (array $account): bool => $account['type'] === 'Revenue');
-            $outputTax = $activeAccounts->first(fn (array $account): bool => str_contains(Str::lower($account['name']), 'output tax'));
-            if (! $receivable || ! $revenue) {
-                throw new RuntimeException('Posting needs active Accounts Receivable and Revenue accounts in Chart of Accounts.');
-            }
-            if ((float) $invoice['tax'] > 0 && ! $outputTax) {
-                throw new RuntimeException('Posting a taxed invoice needs an active Output Tax account.');
-            }
-
-            $existingJournal = collect($journals->all())->first(
-                fn (array $entry): bool => $entry['source_type'] === 'Invoice' && $entry['reference'] === $invoiceNumber
-            );
-            if ($existingJournal) {
-                if ($existingJournal['status'] !== 'Posted') {
-                    throw new RuntimeException('A journal entry already exists for this invoice but is not posted. Review it in Journal Entries.');
-                }
-                $journal = $existingJournal;
-            } else {
-                $lines = [[
-                    'id' => 1,
-                    'account_code' => (string) $receivable['code'],
-                    'account_name' => $receivable['name'],
-                    'description' => 'Invoice '.$invoiceNumber,
-                    'party_reference' => $invoice['customer_code'],
-                    'cost_center' => '',
-                    'debit' => (float) $invoice['total'],
-                    'credit' => 0,
-                ], [
-                    'id' => 2,
-                    'account_code' => (string) $revenue['code'],
-                    'account_name' => $revenue['name'],
-                    'description' => 'Sales revenue '.$invoiceNumber,
-                    'party_reference' => $invoice['customer_code'],
-                    'cost_center' => '',
-                    'debit' => 0,
-                    'credit' => (float) $invoice['subtotal'],
-                ]];
-                if ((float) $invoice['tax'] > 0) {
-                    $lines[] = [
-                        'id' => 3,
-                        'account_code' => (string) $outputTax['code'],
-                        'account_name' => $outputTax['name'],
-                        'description' => 'Output tax '.$invoiceNumber,
-                        'party_reference' => $invoice['customer_code'],
-                        'cost_center' => '',
-                        'debit' => 0,
-                        'credit' => (float) $invoice['tax'],
-                    ];
-                }
-
-                $journal = $journals->create([
-                    'date' => $invoice['invoice_date'],
-                    'reference' => $invoiceNumber,
-                    'description' => 'Sales invoice '.$invoiceNumber.' - '.$invoice['customer_name'],
-                    'source_type' => 'Invoice',
-                    'lines' => $lines,
-                    'total_debit' => (float) $invoice['total'],
-                    'total_credit' => (float) $invoice['total'],
-                    'created_by' => $this->actorSnapshot($request),
-                ]);
-                $journals->submitForReview($journal['journal_number']);
-                $journal = $journals->post($journal['journal_number'], $this->actor($request));
-                $accounts->applyJournalLines($journal['lines']);
-                $auditLogs->record($this->actor($request), 'posted_from_invoice', $journal['journal_number'], ['invoice_number' => $invoiceNumber]);
-            }
+            $journal = $posting->postCreditSale($invoice, $this->actor($request), $request->input('posting'));
 
             $invoice = $sales->markPosted($invoiceNumber, $journal['journal_number'], $this->actor($request));
             $auditLogs->record($this->actor($request), 'posted', $invoiceNumber, ['journal_entry_id' => $journal['journal_number']], 'sales_invoice');

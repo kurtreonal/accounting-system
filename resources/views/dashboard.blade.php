@@ -70,6 +70,29 @@
         </article>
     </section>
 
+    <section class="mt-4 grid gap-4 xl:grid-cols-2">
+        <article class="dashboard-enter overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <header class="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 class="text-sm font-semibold text-slate-900">Recent Customer Payments</h2><p class="mt-0.5 text-xs text-slate-500">Current shared receipt data</p></div><a href="{{ route('accounts-receivable') }}" class="apm-outline-button">View AR</a></header>
+            <div class="divide-y divide-slate-100">
+                @forelse ($dashboard['recent_customer_payments'] as $payment)
+                    <div class="flex items-center justify-between gap-4 px-5 py-3 text-xs"><div><p class="font-medium text-slate-800">{{ $payment['customer_name'] }}</p><span class="mt-1 block font-mono text-[10px] text-slate-400">{{ $payment['receipt_number'] }} · {{ $payment['payment_date'] }}</span></div><strong class="font-mono text-slate-800">&#8369;{{ number_format($payment['amount'], 2) }}</strong></div>
+                @empty
+                    <p class="px-5 py-10 text-center text-xs text-slate-500">No customer payments recorded.</p>
+                @endforelse
+            </div>
+        </article>
+        <article class="dashboard-enter overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <header class="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 class="text-sm font-semibold text-slate-900">Recent Vendor Payments</h2><p class="mt-0.5 text-xs text-slate-500">Current shared disbursement data</p></div><a href="{{ route('accounts-payable') }}" class="apm-outline-button">View AP</a></header>
+            <div class="divide-y divide-slate-100">
+                @forelse ($dashboard['recent_vendor_payments'] as $payment)
+                    <div class="flex items-center justify-between gap-4 px-5 py-3 text-xs"><div><p class="font-medium text-slate-800">{{ $payment['vendor_name'] }}</p><span class="mt-1 block font-mono text-[10px] text-slate-400">{{ $payment['payment_number'] }} · {{ $payment['payment_date'] }}</span></div><strong class="font-mono text-slate-800">&#8369;{{ number_format($payment['amount'], 2) }}</strong></div>
+                @empty
+                    <p class="px-5 py-10 text-center text-xs text-slate-500">No vendor payments recorded.</p>
+                @endforelse
+            </div>
+        </article>
+    </section>
+
     <section class="dashboard-enter mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm [animation-delay:470ms]">
         <header class="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 class="text-sm font-semibold text-slate-900">Recent Journal Entries</h2><p class="mt-0.5 text-xs text-slate-500">Current journal data</p></div><a href="{{ route('journal-entries') }}" class="apm-outline-button">View All</a></header>
         <div class="overflow-x-auto">

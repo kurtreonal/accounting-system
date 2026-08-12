@@ -1,3 +1,5 @@
+import { journalTotals } from './accounting-engine';
+
 const setupJournalEntries = () => {
     const page = document.querySelector('#journal-entries-page');
     const dataElement = document.querySelector('#journal-entry-data');
@@ -118,20 +120,18 @@ const setupJournalEntries = () => {
 
     const calculateTotals = () => {
         const lines = lineValues();
-        const debit = lines.reduce((sum, line) => sum + (Number(line.debit) || 0), 0);
-        const credit = lines.reduce((sum, line) => sum + (Number(line.credit) || 0), 0);
-        const balanced = lines.length >= 2 && debit > 0 && credit > 0 && Math.abs(debit - credit) < 0.005;
-        totalDebit.textContent = currency.format(debit);
-        totalCredit.textContent = currency.format(credit);
-        balanceState.textContent = balanced ? 'Entry balanced and ready for review.' : `Entry not balanced. Difference: ${currency.format(Math.abs(debit - credit))}`;
-        balanceState.className = balanced
+        const totals = journalTotals(lines);
+        totalDebit.textContent = currency.format(totals.total_debit);
+        totalCredit.textContent = currency.format(totals.total_credit);
+        balanceState.textContent = totals.balanced ? 'Entry balanced and ready for review.' : `Entry not balanced. Difference: ${currency.format(totals.difference)}`;
+        balanceState.className = totals.balanced
             ? 'mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700'
             : 'mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800';
-        saveSubmitButton.disabled = !balanced || submitting;
-        saveSubmitButton.classList.toggle('opacity-50', !balanced);
-        saveSubmitButton.classList.toggle('cursor-not-allowed', !balanced);
+        saveSubmitButton.disabled = !totals.balanced || submitting;
+        saveSubmitButton.classList.toggle('opacity-50', !totals.balanced);
+        saveSubmitButton.classList.toggle('cursor-not-allowed', !totals.balanced);
 
-        return balanced;
+        return totals.balanced;
     };
 
     const addLine = (line = {}, readOnly = false) => {
@@ -358,6 +358,16 @@ const setupJournalEntries = () => {
         return button;
     };
 
+    const disabledActionButton = (label, title) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = label;
+        button.disabled = true;
+        button.title = title;
+        button.className = 'cursor-not-allowed rounded-md bg-slate-100 px-2.5 py-1.5 text-[11px] font-medium text-slate-400 opacity-70';
+        return button;
+    };
+
     const statusBadge = (status) => {
         const badge = document.createElement('span');
         const styles = {
@@ -399,7 +409,11 @@ const setupJournalEntries = () => {
                 actionButton('Print', 'print', entry, 'hidden bg-slate-100 text-slate-700 hover:bg-slate-200 sm:inline-flex'),
                 actionButton('Export PDF', 'pdf', entry, 'inline-flex bg-blue-50 text-blue-700 hover:bg-blue-100 sm:hidden'),
             );
-            if (canApprove && !entry.reversal_of) actions.append(actionButton('Reverse', 'reverse', entry, 'bg-red-50 text-red-600 hover:bg-red-100'));
+            if (canApprove && !entry.reversal_of) {
+                actions.append(entry.source_type === 'Manual'
+                    ? actionButton('Reverse', 'reverse', entry, 'bg-red-50 text-red-600 hover:bg-red-100')
+                    : disabledActionButton('Reverse', 'Direct reversal disabled to protect source balances. Source-document void workflow is not implemented.'));
+            }
         } else if (entry.status === 'Reversed') {
             actions.append(
                 actionButton('Print', 'print', entry, 'hidden bg-slate-100 text-slate-700 hover:bg-slate-200 sm:inline-flex'),

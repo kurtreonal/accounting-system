@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Accounting\AccountingPostingService;
 use App\Services\DemoData\AccountDataService;
 use App\Services\DemoData\AuditLogDataService;
 use App\Services\DemoData\JournalEntryDataService;
@@ -157,23 +158,14 @@ class JournalEntryController extends Controller
     public function post(
         Request $request,
         string $journalNumber,
-        JournalEntryDataService $journals,
-        AccountDataService $accounts,
-        AuditLogDataService $auditLogs,
+        AccountingPostingService $posting,
     ): JsonResponse {
         if ($response = $this->denyApproval($request)) {
             return $response;
         }
 
         try {
-            $entry = $journals->find($journalNumber);
-            if (! $this->isBalanced($entry)) {
-                return response()->json(['message' => 'Journal entry must balance before posting.'], 422);
-            }
-
-            $entry = $journals->post($journalNumber, $this->actor($request));
-            $accounts->applyJournalLines($entry['lines']);
-            $auditLogs->record($this->actor($request), 'posted', $journalNumber);
+            $entry = $posting->postManual($journalNumber, $this->actor($request));
         } catch (RuntimeException $exception) {
             return $this->persistenceError($exception);
         }
@@ -184,20 +176,14 @@ class JournalEntryController extends Controller
     public function reverse(
         Request $request,
         string $journalNumber,
-        JournalEntryDataService $journals,
-        AccountDataService $accounts,
-        AuditLogDataService $auditLogs,
+        AccountingPostingService $posting,
     ): JsonResponse {
         if ($response = $this->denyApproval($request)) {
             return $response;
         }
 
         try {
-            $result = $journals->reverse($journalNumber, $this->actor($request));
-            $accounts->applyJournalLines($result['reversal']['lines']);
-            $auditLogs->record($this->actor($request), 'reversed', $journalNumber, [
-                'reversal_entry_number' => $result['reversal']['journal_number'],
-            ]);
+            $result = $posting->reverse($journalNumber, $this->actor($request));
         } catch (RuntimeException $exception) {
             return $this->persistenceError($exception);
         }

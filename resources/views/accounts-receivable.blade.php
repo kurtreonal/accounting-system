@@ -166,7 +166,7 @@
         </article>
     </section>
 
-    <script id="ar-data" type="application/json">@json(['invoices' => $invoices, 'customers' => $customers, 'cashAccounts' => $cashAccounts])</script>
+    <script id="ar-data" type="application/json">{!! Illuminate\Support\Js::encode(['invoices' => $invoices, 'customers' => $customers, 'cashAccounts' => $cashAccounts, 'accounts' => $postingAccounts]) !!}</script>
 </main>
 
 <div id="ar-payment-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="ar-payment-title" aria-hidden="true">

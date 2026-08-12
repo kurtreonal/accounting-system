@@ -2,6 +2,7 @@
 
 namespace App\Services\Exports;
 
+use App\Services\Exports\Pdf\AccountsPayablePdf;
 use App\Services\Exports\Pdf\GeneralLedgerPdf;
 use App\Services\Exports\Pdf\JournalEntriesPdf;
 use App\Services\Exports\Pdf\JournalEntryPdf;
@@ -9,6 +10,16 @@ use DateTimeInterface;
 
 class AccountingPdfExportService
 {
+    /** @param array<int, array<string, mixed>> $bills
+     * @param  array<string, string>  $filters
+     */
+    public function accountsPayable(array $bills, array $filters, DateTimeInterface $generatedAt): string
+    {
+        $pdf = new AccountsPayablePdf($generatedAt, $filters);
+
+        return $pdf->render($bills)->Output('S');
+    }
+
     /** @param array<int, array<string, mixed>> $entries
      * @param  array<string, string>  $filters
      */

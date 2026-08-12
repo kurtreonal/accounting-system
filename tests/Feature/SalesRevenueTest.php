@@ -86,7 +86,24 @@ class SalesRevenueTest extends TestCase
             ->assertJsonPath('invoice.status', 'Draft')
             ->json('invoice');
 
-        $posted = $this->withSession($this->demoSession())->postJson("/sales-revenue/invoices/{$invoice['invoice_number']}/post")
+        $posting = [
+            'engine' => 'accounting-v1',
+            'source_key' => 'invoice:'.$invoice['invoice_number'],
+            'date' => '2026-08-11',
+            'source_type' => 'Invoice',
+            'lines' => [
+                ['account_code' => '1100', 'debit' => 1000, 'credit' => 0],
+                ['account_code' => '4000', 'debit' => 0, 'credit' => 1000],
+            ],
+        ];
+        $tamperedPosting = $posting;
+        $tamperedPosting['lines'][1]['credit'] = 999;
+        $this->withSession($this->demoSession())->postJson("/sales-revenue/invoices/{$invoice['invoice_number']}/post", ['posting' => $tamperedPosting])
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'Posting preview does not match accounting engine rules. Refresh and retry.');
+        $this->assertSame([], json_decode(file_get_contents($this->paths['journals']), true, flags: JSON_THROW_ON_ERROR));
+
+        $posted = $this->withSession($this->demoSession())->postJson("/sales-revenue/invoices/{$invoice['invoice_number']}/post", ['posting' => $posting])
             ->assertOk()
             ->assertJsonPath('invoice.status', 'Posted')
             ->assertJsonPath('journal.reference', 'INV-2026-0001')
@@ -94,9 +111,14 @@ class SalesRevenueTest extends TestCase
             ->json();
 
         $this->assertSame($posted['journal']['journal_number'], $posted['invoice']['journal_entry_id']);
+        $this->assertSame('invoice:INV-2026-0001', $posted['journal']['source_key']);
+        $this->assertSame('accounting-v1', $posted['journal']['posting_engine']);
         $accounts = json_decode(file_get_contents($this->paths['accounts']), true, flags: JSON_THROW_ON_ERROR);
         $this->assertSame(1000, $accounts[0]['balance']);
         $this->assertSame(1000, $accounts[1]['balance']);
+        $this->withSession($this->demoSession())->postJson("/journal-entries/{$posted['journal']['journal_number']}/reverse")
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'Direct reversal is disabled for source-generated journals because source-document voiding is not implemented.');
         $this->withSession($this->demoSession())->postJson("/sales-revenue/invoices/{$invoice['invoice_number']}/post")
             ->assertStatus(409);
 

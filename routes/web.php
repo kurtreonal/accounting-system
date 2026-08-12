@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountsPayableController;
 use App\Http\Controllers\AccountsReceivableController;
 use App\Http\Controllers\ChartOfAccountsController;
 use App\Http\Controllers\ChartOfAccountsExportController;
@@ -43,6 +44,16 @@ Route::get('/sales-revenue/invoices/{invoiceNumber}/print', [SalesRevenueControl
 Route::get('/accounts-receivable', [AccountsReceivableController::class, 'index'])->name('accounts-receivable');
 Route::post('/accounts-receivable/payments', [AccountsReceivableController::class, 'storePayment'])->name('accounts-receivable.payments.store');
 Route::get('/accounts-receivable/export/csv', [AccountsReceivableController::class, 'csv'])->name('accounts-receivable.export.csv');
+Route::get('/accounts-payable', [AccountsPayableController::class, 'index'])->name('accounts-payable');
+Route::post('/accounts-payable/vendors', [AccountsPayableController::class, 'storeVendor'])->name('accounts-payable.vendors.store');
+Route::put('/accounts-payable/vendors/{id}', [AccountsPayableController::class, 'updateVendor'])->name('accounts-payable.vendors.update');
+Route::patch('/accounts-payable/vendors/{id}/status', [AccountsPayableController::class, 'vendorStatus'])->name('accounts-payable.vendors.status');
+Route::post('/accounts-payable/bills', [AccountsPayableController::class, 'storeBill'])->name('accounts-payable.bills.store');
+Route::put('/accounts-payable/bills/{billNumber}', [AccountsPayableController::class, 'updateBill'])->name('accounts-payable.bills.update');
+Route::post('/accounts-payable/bills/{billNumber}/post', [AccountsPayableController::class, 'postBill'])->name('accounts-payable.bills.post');
+Route::post('/accounts-payable/payments', [AccountsPayableController::class, 'storePayment'])->name('accounts-payable.payments.store');
+Route::get('/accounts-payable/export/csv', [AccountsPayableController::class, 'csv'])->name('accounts-payable.export.csv');
+Route::get('/accounts-payable/export/pdf', [AccountsPayableController::class, 'pdf'])->name('accounts-payable.export.pdf');
 Route::get('/chart-of-accounts/export/pdf', [ChartOfAccountsExportController::class, 'pdf'])->name('chart-of-accounts.export.pdf');
 Route::get('/chart-of-accounts/export/csv', [ChartOfAccountsExportController::class, 'csv'])->name('chart-of-accounts.export.csv');
 Route::post('/logout', [DemoAuthController::class, 'logout'])->name('logout');

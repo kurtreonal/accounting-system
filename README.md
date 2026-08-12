@@ -1,58 +1,61 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# APM Customs Accounting System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel, Blade, and JavaScript accounting demonstration using JSON files instead of a database. Built from [`instructions.md`](instructions.md) for OJT demonstrations and internal testing.
 
-## About Laravel
+## Requirements
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.3+
+- Composer
+- Node.js and npm
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Setup
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```powershell
+composer install
+Copy-Item .env.example .env
+php artisan key:generate
+npm install
+npm run build
+php artisan serve
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Open `http://localhost:8000`. Demo users and password hashes are stored in `storage/demo-data/users.json`. Obtain plaintext demo credentials from the project supervisor; do not commit them.
 
-## Contributing
+For local development on the configured Windows/Herd environment:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```powershell
+composer dev
+```
 
-## Code of Conduct
+## Accounting architecture
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+- `resources/js/accounting-engine.js` is the shared browser calculation and posting-preview engine.
+- `app/Services/Accounting/AccountingPostingService.php` is the single server-side posting gate. It validates client previews, account mappings, balance equality, unique source keys, journal transitions, account updates, reversals, and audit metadata.
+- `storage/demo-data/*.json` contains shared demo records. No migrations, Eloquent persistence, or production database are used.
+- Posted source records link to one journal entry. Duplicate source posting and duplicate payment tokens are blocked.
+- Source-generated journals cannot be reversed directly until matching invoice, payment, and bill void workflows exist. Manual journals support offsetting reversal.
 
-## Security Vulnerabilities
+Supported posting events:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+- Credit invoice: debit Accounts Receivable; credit Revenue and optional Output Tax.
+- Customer payment: debit Cash/Bank; credit Accounts Receivable.
+- Vendor bill: debit Expense/Asset and optional Input Tax; credit Accounts Payable.
+- Vendor payment: debit Accounts Payable; credit Cash/Bank.
+- Manual journal: user-selected balanced debit and credit lines.
 
-## License
+## Verification
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```powershell
+npm run test:accounting
+npm run build
+php artisan test
+vendor\bin\pint --test
+```
+
+## Demo-data warning
+
+Use fictional records only. JSON mutations persist in the local working copy. A safe Reset Demo Data workflow is not implemented yet; restore an approved seed snapshot manually when preparing a fresh demonstration.
+
+## Current limitations
+
+Cash/Bank management, Expenses, Trial Balance, financial statements, Tax Settings, administration pages, source-document voiding, and multi-file rollback remain pending. See `Accounting_System_TODO.md` in project handoff files for current status.

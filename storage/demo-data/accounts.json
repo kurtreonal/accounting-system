@@ -4,7 +4,7 @@
         "name": "Cash on Hand",
         "type": "Asset",
         "sub_type": "Cash",
-        "balance": 45500,
+        "balance": 3360,
         "status": "Active"
     },
     {
@@ -12,7 +12,7 @@
         "name": "Accounts Receivable",
         "type": "Asset",
         "sub_type": "Current Asset",
-        "balance": 3360,
+        "balance": 5600,
         "status": "Active"
     },
     {
@@ -28,7 +28,7 @@
         "name": "Owner Capital",
         "type": "Equity",
         "sub_type": "Owner Equity",
-        "balance": 400000,
+        "balance": 0,
         "status": "Active"
     },
     {
@@ -36,7 +36,7 @@
         "name": "Sales Revenue",
         "type": "Revenue",
         "sub_type": "Operating Revenue",
-        "balance": 3000,
+        "balance": 10000,
         "status": "Active"
     },
     {
@@ -44,7 +44,7 @@
         "name": "Office Supplies Expense",
         "type": "Expense",
         "sub_type": "Operating Expense",
-        "balance": 4500,
+        "balance": 0,
         "status": "Active"
     },
     {
@@ -52,7 +52,55 @@
         "name": "Output Tax Payable",
         "type": "Liability",
         "sub_type": "Current Liability",
-        "balance": 360,
+        "balance": 1200,
+        "status": "Active"
+    },
+    {
+        "code": "8",
+        "name": "Utilities Expense",
+        "type": "Expense",
+        "sub_type": "Operating Expense",
+        "balance": 2000,
+        "status": "Active"
+    },
+    {
+        "code": "9",
+        "name": "Rent Expense",
+        "type": "Expense",
+        "sub_type": "Operating Expense",
+        "balance": 0,
+        "status": "Active"
+    },
+    {
+        "code": "10",
+        "name": "Computer Equipment",
+        "type": "Asset",
+        "sub_type": "Fixed Asset",
+        "balance": 0,
+        "status": "Active"
+    },
+    {
+        "code": "11",
+        "name": "Professional Fees",
+        "type": "Expense",
+        "sub_type": "Operating Expense",
+        "balance": 0,
+        "status": "Active"
+    },
+    {
+        "code": "12",
+        "name": "Input Tax Receivable",
+        "type": "Asset",
+        "sub_type": "Current Asset",
+        "balance": 240,
+        "status": "Active"
+    },
+    {
+        "code": "13",
+        "name": "Business Checking Account",
+        "type": "Asset",
+        "sub_type": "Bank",
+        "balance": 0,
         "status": "Active"
     }
 ]

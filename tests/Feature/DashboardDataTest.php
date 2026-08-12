@@ -13,7 +13,7 @@ class DashboardDataTest extends TestCase
         parent::setUp();
 
         $suffix = uniqid('', true);
-        foreach (['accounts', 'journals', 'customers', 'invoices'] as $resource) {
+        foreach (['accounts', 'journals', 'customers', 'invoices', 'customer_payments', 'vendors', 'bills', 'vendor_payments'] as $resource) {
             $this->paths[$resource] = storage_path("framework/testing/dashboard-{$resource}-{$suffix}.json");
             file_put_contents($this->paths[$resource], '[]');
         }
@@ -30,6 +30,10 @@ class DashboardDataTest extends TestCase
         config()->set('accounting.journal_entries_path', $this->paths['journals']);
         config()->set('accounting.customers_path', $this->paths['customers']);
         config()->set('accounting.invoices_path', $this->paths['invoices']);
+        config()->set('accounting.customer_payments_path', $this->paths['customer_payments']);
+        config()->set('accounting.vendors_path', $this->paths['vendors']);
+        config()->set('accounting.bills_path', $this->paths['bills']);
+        config()->set('accounting.vendor_payments_path', $this->paths['vendor_payments']);
     }
 
     protected function tearDown(): void
@@ -50,7 +54,7 @@ class DashboardDataTest extends TestCase
             ->assertOk()
             ->assertSee('₱500.00')
             ->assertSee('₱400.00')
-            ->assertSee('Current JSON journal data')
+            ->assertSee('Current journal data')
             ->assertDontSee('6,037,751.25')
             ->assertDontSee('JE-2024-0089');
     }

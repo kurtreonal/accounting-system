@@ -267,7 +267,7 @@ class SalesDataService
         $amountPaid = round((float) ($invoice['amount_paid'] ?? 0) + $payments, 2);
         $remaining = max(0, round((float) $invoice['total'] - $amountPaid, 2));
         $status = $invoice['status'];
-        if ($status === 'Posted' && $remaining === 0.0) {
+        if ($status === 'Posted' && $remaining <= 0.004) {
             $status = 'Paid';
         } elseif ($status === 'Posted' && $amountPaid > 0) {
             $status = 'Partially Paid';

@@ -1,3 +1,5 @@
+import { allocationTotal, createPosting, validateAllocations } from './accounting-engine';
+
 const setupAccountsReceivable = () => {
     const page = document.querySelector('#accounts-receivable-page');
     const dataElement = document.querySelector('#ar-data');
@@ -135,8 +137,8 @@ const setupAccountsReceivable = () => {
         return `<option value="">Select invoice</option>${options}`;
     };
     const updateTotal = () => {
-        const total = [...allocationRows.querySelectorAll('[data-allocation-amount]')]
-            .reduce((sum, input) => sum + Number(input.value || 0), 0);
+        const total = allocationTotal([...allocationRows.querySelectorAll('[data-allocation-amount]')]
+            .map((input) => ({ amount: input.value })));
         document.querySelector('#ar-payment-total').textContent = money.format(total);
     };
     const updateAllocation = (row, keepAmount = false) => {
@@ -216,8 +218,17 @@ const setupAccountsReceivable = () => {
             return;
         }
 
-        const submit = document.querySelector('#ar-payment-submit');
-        submit.disabled = true;
+        const allocations = [...allocationRows.querySelectorAll('tr')].map((row) => ({
+            invoice_number: row.querySelector('[data-allocation-invoice]').value,
+            amount: row.querySelector('[data-allocation-amount]').value,
+        }));
+        let total;
+        try {
+            total = validateAllocations(allocations, openInvoicesFor(form.elements.customer_id.value), 'invoice_number');
+        } catch (problem) {
+            showMessage(problem.message);
+            return;
+        }
         const payload = {
             request_token: form.elements.request_token.value,
             customer_id: form.elements.customer_id.value,
@@ -225,11 +236,17 @@ const setupAccountsReceivable = () => {
             cash_account_code: form.elements.cash_account_code.value,
             reference: form.elements.reference.value.trim(),
             memo: form.elements.memo.value.trim(),
-            allocations: [...allocationRows.querySelectorAll('tr')].map((row) => ({
-                invoice_number: row.querySelector('[data-allocation-invoice]').value,
-                amount: row.querySelector('[data-allocation-amount]').value,
-            })),
+            allocations,
         };
+        try {
+            payload.posting = createPosting('customer-payment', { ...payload, amount: total }, data.accounts || []);
+        } catch (problem) {
+            showMessage(problem.message);
+            return;
+        }
+
+        const submit = document.querySelector('#ar-payment-submit');
+        submit.disabled = true;
 
         try {
             const response = await fetch(page.dataset.paymentUrl, {

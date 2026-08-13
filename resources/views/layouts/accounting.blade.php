@@ -81,10 +81,11 @@
             </nav>
 
             <div class="flex h-16 shrink-0 items-center border-t border-white/10 px-3">
-                <div class="flex w-full items-center gap-2.5 rounded-lg p-1 transition-colors duration-150 hover:bg-white/5">
+                <button type="button" class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg p-1 text-left transition-colors duration-150 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-400/70" data-profile-toggle aria-haspopup="menu" aria-expanded="false" title="Open profile menu">
                     <span class="grid size-7 shrink-0 place-items-center rounded-full bg-red-600 text-[10px] font-bold text-white">{{ $userInitials }}</span>
                     <div class="apm-sidebar-label min-w-0"><p class="truncate text-[11px] font-medium text-white">{{ $currentUser['name'] }}</p><span class="inline-block rounded-full bg-red-100 px-1.5 py-0.5 text-[8px] font-bold text-red-600">{{ $currentUser['role'] }}</span></div>
-                </div>
+                    <i class="apm-sidebar-label fa-solid fa-chevron-up ml-auto text-[9px] text-slate-500" aria-hidden="true"></i>
+                </button>
             </div>
         </aside>
 
@@ -103,9 +104,44 @@
                     <svg class="theme-icon-moon size-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 15.75A9.75 9.75 0 0 1 8.25 2.25a9.75 9.75 0 1 0 13.5 13.5Z"/></svg>
                     <svg class="theme-icon-sun size-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="3.75"/><path stroke-linecap="round" d="M12 2.25v2.1M12 19.65v2.1M21.75 12h-2.1M4.35 12h-2.1M18.9 5.1l-1.48 1.48M6.58 17.42 5.1 18.9M18.9 18.9l-1.48-1.48M6.58 6.58 5.1 5.1"/></svg>
                 </button>
-                <span class="grid size-8 place-items-center rounded-full bg-red-600 text-[10px] font-bold text-white">{{ $userInitials }}</span>
+                <button type="button" class="grid size-8 cursor-pointer place-items-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-sm transition hover:bg-red-500 focus:outline-none focus:ring-3 focus:ring-red-200" data-profile-toggle aria-label="Open profile menu for {{ $currentUser['name'] }}" aria-haspopup="menu" aria-expanded="false" title="Open profile menu">{{ $userInitials }}</button>
             </div>
         </header>
+
+        <div id="profile-menu" class="fixed z-50 hidden w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl print:hidden" role="menu" aria-hidden="true">
+            <div class="border-b border-slate-100 px-4 py-3">
+                <div class="flex items-center gap-3">
+                    <span class="grid size-9 shrink-0 place-items-center rounded-full bg-red-600 text-[11px] font-bold text-white">{{ $userInitials }}</span>
+                    <div class="min-w-0"><p class="truncate text-sm font-semibold text-slate-900">{{ $currentUser['name'] }}</p><p class="truncate text-[11px] text-slate-500">{{ $currentUser['email'] ?? 'Demo account' }}</p></div>
+                </div>
+                <span class="mt-2 inline-flex rounded-full bg-red-50 px-2 py-1 text-[9px] font-semibold text-red-600">{{ $currentUser['role'] }}</span>
+            </div>
+            <div class="p-2">
+                <button type="button" class="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-medium text-red-600 transition hover:bg-red-50 focus:bg-red-50 focus:outline-none" data-logout-open role="menuitem">
+                    <i class="fa-solid fa-arrow-right-from-bracket w-4 text-center" aria-hidden="true"></i>
+                    <span>Log out</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="logout-confirmation-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 print:hidden" role="dialog" aria-modal="true" aria-labelledby="logout-confirmation-title" aria-describedby="logout-confirmation-description" aria-hidden="true">
+            <button type="button" class="absolute inset-0 cursor-default bg-slate-950/60 backdrop-blur-[1px]" data-logout-cancel aria-label="Cancel logout"></button>
+            <section class="relative z-10 w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-2xl">
+                <div class="flex items-start gap-3">
+                    <span class="grid size-10 shrink-0 place-items-center rounded-full bg-red-50 text-red-600"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i></span>
+                    <div><h2 id="logout-confirmation-title" class="text-sm font-semibold text-slate-900">Log out of your account?</h2><p id="logout-confirmation-description" class="mt-1 text-xs leading-5 text-slate-500">You will return to the login page. Any unsaved form changes will be lost.</p></div>
+                </div>
+                <div class="mt-5 flex justify-end gap-2">
+                    <button type="button" class="apm-outline-button" data-logout-cancel>Cancel</button>
+                    <form action="{{ route('logout') }}" method="POST" data-logout-form>
+                        @csrf
+                        <button type="submit" class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-red-600 px-3.5 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-red-500 focus:outline-none focus:ring-3 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-60">
+                            <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i><span>Yes, log out</span>
+                        </button>
+                    </form>
+                </div>
+            </section>
+        </div>
 
         <header class="apm-print-header" aria-hidden="true">
             <div>

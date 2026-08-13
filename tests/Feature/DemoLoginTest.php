@@ -34,4 +34,20 @@ class DemoLoginTest extends TestCase
             'role' => 'Viewer / Auditor',
         ])->assertSessionHasErrors('email');
     }
+
+    public function test_authenticated_layout_has_profile_logout_controls_and_logout_invalidates_session(): void
+    {
+        $session = ['demo_user' => ['id' => 1, 'name' => 'Test Administrator', 'email' => 'test@example.test', 'role' => 'Administrator']];
+
+        $this->withSession($session)->get('/dashboard')->assertOk()
+            ->assertSee('data-profile-toggle', false)
+            ->assertSee('id="profile-menu"', false)
+            ->assertSee('fa-arrow-right-from-bracket', false)
+            ->assertSee('id="logout-confirmation-modal"', false)
+            ->assertSee(route('logout'), false);
+
+        $this->withSession($session)->post('/logout')
+            ->assertRedirect('/login')
+            ->assertSessionMissing('demo_user');
+    }
 }

@@ -121,6 +121,96 @@ const setupPagePrinting = () => {
     window.addEventListener('beforeprint', updateGeneratedTime);
 };
 
+const setupProfileLogout = () => {
+    const toggles = [...document.querySelectorAll('[data-profile-toggle]')];
+    const menu = document.querySelector('#profile-menu');
+    const logoutButton = menu?.querySelector('[data-logout-open]');
+    const modal = document.querySelector('#logout-confirmation-modal');
+    const form = modal?.querySelector('[data-logout-form]');
+
+    if (toggles.length === 0 || !menu || !logoutButton || !modal || !form) return;
+
+    let activeToggle = null;
+
+    const closeMenu = (restoreFocus = false) => {
+        menu.classList.add('hidden');
+        menu.setAttribute('aria-hidden', 'true');
+        toggles.forEach((toggle) => toggle.setAttribute('aria-expanded', 'false'));
+        if (restoreFocus) activeToggle?.focus();
+    };
+
+    const positionMenu = (toggle) => {
+        const rect = toggle.getBoundingClientRect();
+        const gap = 8;
+        const menuWidth = 256;
+        const menuHeight = menu.offsetHeight || 176;
+        const fromSidebar = Boolean(toggle.closest('#app-sidebar'));
+        const left = fromSidebar
+            ? Math.min(window.innerWidth - menuWidth - gap, rect.right + gap)
+            : Math.max(gap, Math.min(window.innerWidth - menuWidth - gap, rect.right - menuWidth));
+        const top = fromSidebar
+            ? Math.max(gap, Math.min(window.innerHeight - menuHeight - gap, rect.bottom - menuHeight))
+            : Math.min(window.innerHeight - menuHeight - gap, rect.bottom + gap);
+
+        menu.style.left = `${left}px`;
+        menu.style.top = `${top}px`;
+    };
+
+    const openMenu = (toggle) => {
+        activeToggle = toggle;
+        menu.classList.remove('hidden');
+        menu.setAttribute('aria-hidden', 'false');
+        toggles.forEach((item) => item.setAttribute('aria-expanded', String(item === toggle)));
+        positionMenu(toggle);
+        logoutButton.focus();
+    };
+
+    const closeModal = (restoreFocus = true) => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('overflow-hidden');
+        if (restoreFocus) activeToggle?.focus();
+    };
+
+    const openModal = () => {
+        closeMenu();
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('overflow-hidden');
+        modal.querySelector('[data-logout-cancel]')?.focus();
+    };
+
+    toggles.forEach((toggle) => toggle.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (!menu.classList.contains('hidden') && activeToggle === toggle) closeMenu(true);
+        else openMenu(toggle);
+    }));
+
+    logoutButton.addEventListener('click', openModal);
+    modal.querySelectorAll('[data-logout-cancel]').forEach((button) => button.addEventListener('click', () => closeModal()));
+    form.addEventListener('submit', () => {
+        const submit = form.querySelector('button[type="submit"]');
+        if (!submit) return;
+        submit.disabled = true;
+        submit.querySelector('span').textContent = 'Logging out...';
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!menu.classList.contains('hidden') && !menu.contains(event.target) && !toggles.some((toggle) => toggle.contains(event.target))) closeMenu();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        if (!modal.classList.contains('hidden')) closeModal();
+        else if (!menu.classList.contains('hidden')) closeMenu(true);
+    });
+    window.addEventListener('resize', () => {
+        if (!menu.classList.contains('hidden') && activeToggle) positionMenu(activeToggle);
+    });
+};
+
 document.addEventListener('DOMContentLoaded', setupThemeToggle);
 document.addEventListener('DOMContentLoaded', setupSidebarToggle);
 document.addEventListener('DOMContentLoaded', setupPagePrinting);
+document.addEventListener('DOMContentLoaded', setupProfileLogout);

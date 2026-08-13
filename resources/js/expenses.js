@@ -4,35 +4,57 @@ const setupExpenses = () => {
     const page = document.querySelector('#expenses-page');
     if (!page) return;
 
-    const records = JSON.parse(document.querySelector('#expense-data').textContent).expenses || [];
-    const canMutate = can('drafts.manage');
+    const data = JSON.parse(document.querySelector('#expense-data').textContent);
+    const records = data.expenses || [];
+    const payments = data.payments || [];
+    const canDraft = can('drafts.manage');
     const canApprove = can('transactions.approve');
+    const canReverse = can('transactions.reverse');
     const money = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
-    const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
-    const form = document.querySelector('#expense-form');
+    const expenseForm = document.querySelector('#expense-form');
+    const paymentForm = document.querySelector('#expense-payment-form');
     const pageSize = 8;
     let currentPage = 1;
     let sort = { field: 'date', direction: 'desc' };
     let receipt = null;
 
-    const token = () => globalThis.crypto?.randomUUID?.() || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => { const number = Math.random() * 16 | 0; return (character === 'x' ? number : (number & 3 | 8)).toString(16); });
-    const urlFor = (expenseNumber, action = '') => `${page.dataset.storeUrl}/${encodeURIComponent(expenseNumber)}${action ? `/${action}` : ''}`;
-    const setModal = (name, open) => { const modal = document.querySelector(`#expense-${name}-modal`); modal.classList.toggle('hidden', !open); modal.classList.toggle('flex', open); modal.setAttribute('aria-hidden', String(!open)); };
-    const showMessage = (message, success = false) => { const target = document.querySelector('[data-expense-message]'); target.textContent = message; target.className = `mt-3 rounded-lg p-3 text-xs ${success ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`; };
-    const clearErrors = () => document.querySelectorAll('#expense-form [data-error]').forEach((element) => { element.textContent = ''; });
-    const showErrors = (errors = {}) => Object.entries(errors).forEach(([field, messages]) => { const target = form.querySelector(`[data-error="${field.split('.')[0]}"]`); if (target) target.textContent = messages[0]; });
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
+    const token = () => globalThis.crypto?.randomUUID?.() || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+        const number = Math.random() * 16 | 0;
+        return (character === 'x' ? number : (number & 3 | 8)).toString(16);
+    });
+    const expenseUrl = (number, action = '') => page.dataset.storeUrl + '/' + encodeURIComponent(number) + (action ? '/' + action : '');
+    const paymentUrl = (number = '', action = '') => page.dataset.paymentUrl + (number ? '/' + encodeURIComponent(number) : '') + (action ? '/' + action : '');
+    const setModal = (name, open) => {
+        const modal = document.querySelector('#expense-' + name + '-modal');
+        modal.classList.toggle('hidden', !open);
+        modal.classList.toggle('flex', open);
+        modal.setAttribute('aria-hidden', String(!open));
+    };
     const fetchJson = async (url, options = {}) => {
-        const response = await fetch(url, { ...options, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '', ...(options.headers || {}) } });
-        let result = {};
-        try { result = await response.json(); } catch (_) { result = { message: 'The server returned an invalid response.' }; }
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                ...(options.headers || {}),
+            },
+        });
+        let result;
+        try { result = await response.json(); } catch (_) { result = { message: 'Server returned an invalid response.' }; }
         return { response, result };
     };
-
-    const statusBadge = (status) => ({
+    const statusClass = (status) => ({
         Draft: 'bg-slate-100 text-slate-600',
         'For Review': 'bg-amber-100 text-amber-700',
         Approved: 'bg-blue-100 text-blue-700',
+        Posted: 'bg-emerald-100 text-emerald-700',
+        Reversed: 'bg-rose-100 text-rose-700',
     })[status] || 'bg-slate-100 text-slate-600';
+    const journalLink = (number) => number
+        ? '<a href="/journal-entries?entry=' + encodeURIComponent(number) + '" class="font-mono text-blue-600 hover:underline">' + escapeHtml(number) + '</a>'
+        : '<span class="text-slate-400">Not posted</span>';
 
     const filtered = () => {
         const search = document.querySelector('#expense-search').value.trim().toLowerCase();
@@ -42,14 +64,16 @@ const setupExpenses = () => {
         const from = document.querySelector('#expense-date-from').value;
         const to = document.querySelector('#expense-date-to').value;
         const min = Number(document.querySelector('#expense-min').value || 0);
-        const maxInput = document.querySelector('#expense-max').value;
-        const max = maxInput === '' ? Number.POSITIVE_INFINITY : Number(maxInput);
-        return records.filter((row) => (!search || `${row.expense_number} ${row.payee} ${row.memo} ${row.category_name}`.toLowerCase().includes(search))
+        const maxValue = document.querySelector('#expense-max').value;
+        const max = maxValue === '' ? Number.POSITIVE_INFINITY : Number(maxValue);
+        return records.filter((row) => (!search || (row.expense_number + ' ' + row.payee + ' ' + row.memo + ' ' + row.category_name).toLowerCase().includes(search))
             && (!category || String(row.category_account_code) === category)
             && (!status || row.status === status)
             && (!payment || row.payment_status === payment)
-            && (!from || row.date >= from) && (!to || row.date <= to)
-            && Number(row.total) >= min && Number(row.total) <= max)
+            && (!from || row.date >= from)
+            && (!to || row.date <= to)
+            && Number(row.total) >= min
+            && Number(row.total) <= max)
             .sort((left, right) => {
                 const a = sort.field === 'total' ? Number(left[sort.field]) : String(left[sort.field]);
                 const b = sort.field === 'total' ? Number(right[sort.field]) : String(right[sort.field]);
@@ -57,113 +81,317 @@ const setupExpenses = () => {
             });
     };
 
-    const render = () => {
+    const expenseActions = (row) => {
+        const actions = ['<button type="button" data-expense-view="' + escapeHtml(row.expense_number) + '" class="apm-icon-button" title="View expense"><i class="fa-solid fa-eye"></i></button>'];
+        const activePayment = payments.find((payment) => payment.expense_number === row.expense_number && payment.status !== 'Reversed');
+        if (canDraft && row.status === 'Draft') {
+            actions.push('<button type="button" data-expense-edit="' + escapeHtml(row.expense_number) + '" class="apm-icon-button" title="Edit draft"><i class="fa-solid fa-pen"></i></button>');
+            actions.push('<button type="button" data-expense-submit="' + escapeHtml(row.expense_number) + '" class="apm-icon-button text-amber-600" title="Submit for review"><i class="fa-solid fa-paper-plane"></i></button>');
+            actions.push('<button type="button" data-expense-delete="' + escapeHtml(row.expense_number) + '" class="apm-icon-button text-rose-600" title="Delete draft"><i class="fa-solid fa-trash"></i></button>');
+        }
+        if (canApprove && row.status === 'For Review') {
+            actions.push('<button type="button" data-expense-return="' + escapeHtml(row.expense_number) + '" class="apm-outline-button">Return</button>');
+            actions.push('<button type="button" data-expense-approve="' + escapeHtml(row.expense_number) + '" class="apm-primary-button">Approve</button>');
+        }
+        if (canDraft && row.status === 'Approved' && row.payment_status === 'Unpaid' && !activePayment) {
+            actions.push('<button type="button" data-expense-pay="' + escapeHtml(row.expense_number) + '" class="apm-primary-button">Pay</button>');
+        }
+        if (canReverse && row.status === 'Approved' && !row.payment_journal_entry_id) {
+            actions.push('<button type="button" data-expense-reverse="' + escapeHtml(row.expense_number) + '" class="apm-outline-button text-rose-600" title="Reverse approved expense">Reverse</button>');
+        }
+        return actions.join('');
+    };
+
+    const renderExpenses = () => {
         const rows = filtered();
         const pages = Math.max(1, Math.ceil(rows.length / pageSize));
         currentPage = Math.min(currentPage, pages);
         const start = (currentPage - 1) * pageSize;
         const visible = rows.slice(start, start + pageSize);
-        document.querySelector('#expense-rows').innerHTML = visible.length ? visible.map((row) => {
-            const actions = [`<button type="button" data-expense-view="${escapeHtml(row.expense_number)}" class="apm-icon-button" title="View expense" aria-label="View ${escapeHtml(row.expense_number)}"><i class="fa-solid fa-eye"></i></button>`];
-            if (canMutate && row.status === 'Draft') {
-                actions.push(`<button type="button" data-expense-edit="${escapeHtml(row.expense_number)}" class="apm-icon-button" title="Edit draft" aria-label="Edit ${escapeHtml(row.expense_number)}"><i class="fa-solid fa-pen"></i></button>`);
-                actions.push(`<button type="button" data-expense-submit="${escapeHtml(row.expense_number)}" class="apm-icon-button text-amber-600" title="Submit for review" aria-label="Submit ${escapeHtml(row.expense_number)} for review"><i class="fa-solid fa-paper-plane"></i></button>`);
-                actions.push(`<button type="button" data-expense-delete="${escapeHtml(row.expense_number)}" class="apm-icon-button text-rose-600" title="Delete draft" aria-label="Delete ${escapeHtml(row.expense_number)}"><i class="fa-solid fa-trash"></i></button>`);
-            }
-            if (canApprove && row.status === 'For Review') actions.push(`<button type="button" data-expense-approve="${escapeHtml(row.expense_number)}" class="rounded-md bg-blue-600 px-2 py-1 text-[10px] font-semibold text-white hover:bg-blue-500">Approve</button>`);
-            return `<tr class="apm-table-row"><td><button type="button" data-expense-view="${escapeHtml(row.expense_number)}" class="font-mono text-[11px] font-semibold text-blue-600 hover:underline">${escapeHtml(row.expense_number)}</button></td><td class="font-mono text-[11px]">${escapeHtml(row.date)}</td><td><p class="font-medium text-slate-800">${escapeHtml(row.payee)}</p><p class="mt-0.5 max-w-52 truncate text-[10px] text-slate-400" title="${escapeHtml(row.memo)}">${escapeHtml(row.memo)}</p></td><td>${escapeHtml(row.category_name)}</td><td><p>${escapeHtml(row.payment_method)}</p><span class="text-[10px] ${row.payment_status === 'Paid' ? 'text-emerald-600' : 'text-amber-600'}">${escapeHtml(row.payment_status)}</span></td><td class="apm-money text-right">${money.format(Number(row.total))}<p class="text-[9px] text-slate-400">Tax ${money.format(Number(row.tax))}</p></td><td class="text-center">${row.receipt?.name ? `<span title="${escapeHtml(row.receipt.name)}" class="text-emerald-600"><i class="fa-solid fa-paperclip"></i><span class="sr-only">Attached</span></span>` : '<span class="text-slate-300">—</span>'}</td><td>${escapeHtml(row.created_by?.name || 'Demo User')}</td><td class="text-center"><span class="inline-flex rounded-full px-2 py-1 text-[10px] font-semibold ${statusBadge(row.status)}">${escapeHtml(row.status)}</span></td><td class="print:hidden"><div class="flex items-center justify-end gap-1">${actions.join('')}</div></td></tr>`;
-        }).join('') : '<tr><td colspan="10" class="px-4 py-14 text-center"><i class="fa-solid fa-receipt text-3xl text-slate-300"></i><p class="mt-3 text-sm font-medium text-slate-600">No expenses found</p><p class="mt-1 text-xs text-slate-400">Adjust the filters or create a new expense.</p></td></tr>';
-        document.querySelector('#expense-result-count').textContent = `${rows.length} matching record${rows.length === 1 ? '' : 's'}`;
-        document.querySelector('#expense-page-summary').textContent = rows.length ? `Showing ${start + 1}–${Math.min(start + pageSize, rows.length)} of ${rows.length}` : 'Showing 0 records';
+        document.querySelector('#expense-rows').innerHTML = visible.length ? visible.map((row) =>
+            '<tr class="apm-table-row">' +
+            '<td><button type="button" data-record-detail data-record-resource="expense" data-record-id="' + escapeHtml(row.expense_number) + '" class="font-mono text-[11px] font-semibold text-blue-600 hover:underline">' + escapeHtml(row.expense_number) + '</button></td>' +
+            '<td class="font-mono text-[11px]">' + escapeHtml(row.date) + '</td>' +
+            '<td><p class="font-medium text-slate-800">' + escapeHtml(row.payee) + '</p><p class="mt-0.5 max-w-52 truncate text-[10px] text-slate-400" title="' + escapeHtml(row.memo) + '">' + escapeHtml(row.memo) + '</p></td>' +
+            '<td>' + escapeHtml(row.category_name) + '</td>' +
+            '<td><p>' + escapeHtml(row.payment_method || 'Pay later') + '</p><span class="text-[10px] ' + (row.payment_status === 'Paid' ? 'text-emerald-600' : 'text-amber-600') + '">' + escapeHtml(row.payment_status) + '</span>' + (row.due_date ? '<p class="text-[9px] text-slate-400">Due ' + escapeHtml(row.due_date) + '</p>' : '') + '</td>' +
+            '<td class="apm-money text-right">' + money.format(Number(row.total)) + '<p class="text-[9px] text-slate-400">Tax ' + money.format(Number(row.tax)) + '</p></td>' +
+            '<td class="text-center">' + (row.receipt?.name ? '<span title="' + escapeHtml(row.receipt.name) + '" class="text-emerald-600"><i class="fa-solid fa-paperclip"></i></span>' : '<span class="text-slate-300">—</span>') + '</td>' +
+            '<td>' + escapeHtml(row.created_by?.name || 'Demo User') + '</td>' +
+            '<td class="text-center"><span class="inline-flex rounded-full px-2 py-1 text-[10px] font-semibold ' + statusClass(row.status) + '">' + escapeHtml(row.status) + '</span></td>' +
+            '<td class="print:hidden"><div class="flex items-center justify-end gap-1">' + expenseActions(row) + '</div></td></tr>'
+        ).join('') : '<tr><td colspan="10" class="px-4 py-14 text-center text-slate-500">No expenses found.</td></tr>';
+        document.querySelector('#expense-result-count').textContent = rows.length + ' matching record' + (rows.length === 1 ? '' : 's');
+        document.querySelector('#expense-page-summary').textContent = rows.length ? 'Showing ' + (start + 1) + '–' + Math.min(start + pageSize, rows.length) + ' of ' + rows.length : 'Showing 0 records';
         document.querySelector('#expense-page-number').textContent = currentPage;
         document.querySelector('#expense-prev').disabled = currentPage === 1;
         document.querySelector('#expense-next').disabled = currentPage === pages;
     };
 
+    const paymentActions = (payment) => {
+        const actions = [];
+        if (canDraft && payment.status === 'Draft') {
+            actions.push('<button type="button" data-payment-edit="' + escapeHtml(payment.payment_number) + '" class="apm-icon-button" title="Edit payment"><i class="fa-solid fa-pen"></i></button>');
+            actions.push('<button type="button" data-payment-submit="' + escapeHtml(payment.payment_number) + '" class="apm-icon-button text-amber-600" title="Submit payment"><i class="fa-solid fa-paper-plane"></i></button>');
+            actions.push('<button type="button" data-payment-delete="' + escapeHtml(payment.payment_number) + '" class="apm-icon-button text-rose-600" title="Delete payment"><i class="fa-solid fa-trash"></i></button>');
+        }
+        if (canApprove && payment.status === 'For Review') {
+            actions.push('<button type="button" data-payment-return="' + escapeHtml(payment.payment_number) + '" class="apm-outline-button">Return</button>');
+            actions.push('<button type="button" data-payment-post="' + escapeHtml(payment.payment_number) + '" class="apm-primary-button">Post</button>');
+        }
+        if (canReverse && payment.status === 'Posted') {
+            actions.push('<button type="button" data-payment-reverse="' + escapeHtml(payment.payment_number) + '" class="apm-outline-button text-rose-600">Reverse</button>');
+        }
+        return actions.join('') || '<span class="text-slate-400">Read only</span>';
+    };
+
+    const renderPayments = () => {
+        const target = document.querySelector('#expense-payment-rows');
+        target.innerHTML = payments.length ? payments.map((payment) =>
+            '<tr class="apm-table-row">' +
+            '<td><button type="button" data-record-detail data-record-resource="expense_payment" data-record-id="' + escapeHtml(payment.payment_number) + '" class="font-mono text-blue-600 hover:underline">' + escapeHtml(payment.payment_number) + '</button></td>' +
+            '<td><button type="button" data-record-detail data-record-resource="expense" data-record-id="' + escapeHtml(payment.expense_number) + '" class="font-mono text-blue-600 hover:underline">' + escapeHtml(payment.expense_number) + '</button></td>' +
+            '<td class="font-mono">' + escapeHtml(payment.payment_date) + '</td>' +
+            '<td><p>' + escapeHtml(payment.payee) + '</p><p class="text-[10px] text-slate-400">' + escapeHtml(payment.payment_method) + '</p></td>' +
+            '<td class="apm-money text-right">' + money.format(Number(payment.amount)) + '</td>' +
+            '<td>' + journalLink(payment.journal_entry_id) + '</td>' +
+            '<td><span class="inline-flex rounded-full px-2 py-1 text-[10px] font-semibold ' + statusClass(payment.status) + '">' + escapeHtml(payment.status) + '</span></td>' +
+            '<td class="print:hidden"><div class="flex items-center justify-end gap-1">' + paymentActions(payment) + '</div></td></tr>'
+        ).join('') : '<tr><td colspan="8" class="px-4 py-8 text-center text-slate-500">No expense payments yet.</td></tr>';
+    };
+
     const updateTotals = () => {
-        const subtotal = Number(form.elements.amount.value || 0);
-        const tax = subtotal * Number(form.elements.tax_rate.value || 0) / 100;
+        const subtotal = Number(expenseForm.elements.amount.value || 0);
+        const tax = subtotal * Number(expenseForm.elements.tax_rate.value || 0) / 100;
         document.querySelector('#expense-tax-preview').textContent = money.format(tax);
         document.querySelector('#expense-total-preview').textContent = money.format(subtotal + tax);
     };
-    const updatePaymentFields = () => { const paid = form.elements.payment_status.value === 'Paid'; document.querySelector('[data-cash-account]').classList.toggle('hidden', !paid); form.elements.cash_account_code.required = paid; };
+    const updatePaymentFields = () => {
+        const paid = expenseForm.elements.payment_status.value === 'Paid';
+        document.querySelector('[data-cash-account]').classList.toggle('hidden', !paid);
+        document.querySelector('[data-payment-method]').classList.toggle('hidden', !paid);
+        document.querySelector('[data-expense-due-date]').classList.toggle('hidden', paid);
+        expenseForm.elements.cash_account_code.required = paid;
+        expenseForm.elements.payment_method.required = paid;
+        expenseForm.elements.due_date.required = !paid;
+        if (paid) expenseForm.elements.due_date.value = '';
+        else {
+            expenseForm.elements.cash_account_code.value = '';
+            expenseForm.elements.payment_method.value = '';
+        }
+    };
     const showReceipt = (metadata, dataUrl = '') => {
         const target = document.querySelector('#expense-receipt-preview');
         if (!metadata?.name) { target.classList.add('hidden'); target.innerHTML = ''; return; }
         target.classList.remove('hidden');
-        target.innerHTML = `${dataUrl && metadata.type.startsWith('image/') ? `<img src="${dataUrl}" alt="Receipt preview" class="mb-2 max-h-36 rounded-lg object-contain">` : '<i class="fa-solid fa-file-lines mr-2 text-blue-600"></i>'}<strong>${escapeHtml(metadata.name)}</strong><span class="ml-2 text-slate-400">${(Number(metadata.size) / 1024).toFixed(1)} KB</span>`;
+        target.innerHTML = (dataUrl && metadata.type.startsWith('image/') ? '<img src="' + dataUrl + '" alt="Receipt preview" class="mb-2 max-h-36 rounded-lg object-contain">' : '<i class="fa-solid fa-file-lines mr-2 text-blue-600"></i>') +
+            '<strong>' + escapeHtml(metadata.name) + '</strong><span class="ml-2 text-slate-400">' + (Number(metadata.size) / 1024).toFixed(1) + ' KB</span>';
+    };
+    const clearExpenseErrors = () => expenseForm.querySelectorAll('[data-error]').forEach((element) => { element.textContent = ''; });
+    const showExpenseErrors = (errors = {}) => Object.entries(errors).forEach(([field, messages]) => {
+        const target = expenseForm.querySelector('[data-error="' + field.split('.')[0] + '"]');
+        if (target) target.textContent = messages[0];
+    });
+    const showExpenseMessage = (message, success = false) => {
+        const target = document.querySelector('[data-expense-message]');
+        target.textContent = message;
+        target.className = 'mt-3 rounded-lg p-3 text-xs ' + (success ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700');
     };
 
-    const openForm = (row = null) => {
-        form.reset(); clearErrors(); receipt = row?.receipt || null;
-        form.elements.expense_number.value = row?.expense_number || '';
-        form.elements.request_token.value = row?.request_token || token();
-        form.elements.date.value = row?.date || new Date().toISOString().slice(0, 10);
-        ['payee', 'category_account_code', 'tax_rate', 'payment_status', 'payment_method', 'cash_account_code', 'memo'].forEach((field) => { if (row) form.elements[field].value = row[field] ?? ''; });
-        form.elements.amount.value = row?.subtotal ?? '';
-        document.querySelector('#expense-form-title').textContent = row ? `Edit ${row.expense_number}` : 'New Expense';
+    const openExpenseForm = (row = null) => {
+        expenseForm.reset();
+        clearExpenseErrors();
+        receipt = row?.receipt || null;
+        expenseForm.elements.expense_number.value = row?.expense_number || '';
+        expenseForm.elements.request_token.value = row?.request_token || token();
+        expenseForm.elements.date.value = row?.date || new Date().toISOString().slice(0, 10);
+        ['payee', 'category_account_code', 'tax_rate', 'payment_status', 'payment_method', 'due_date', 'cash_account_code', 'memo'].forEach((field) => {
+            if (row) expenseForm.elements[field].value = row[field] ?? '';
+        });
+        expenseForm.elements.amount.value = row?.subtotal ?? '';
+        document.querySelector('#expense-form-title').textContent = row ? 'Edit ' + row.expense_number : 'New Expense';
         document.querySelector('[data-expense-message]').classList.add('hidden');
-        showReceipt(receipt); updateTotals(); updatePaymentFields(); setModal('form', true);
-        setTimeout(() => form.elements.date.focus(), 0);
+        showReceipt(receipt);
+        updateTotals();
+        updatePaymentFields();
+        setModal('form', true);
     };
 
     const openView = (row) => {
         document.querySelector('#expense-view-title').textContent = row.expense_number;
-        document.querySelector('#expense-view-content').innerHTML = `<div class="flex items-start justify-between"><div><p class="text-sm font-semibold text-slate-900">${escapeHtml(row.payee)}</p><p class="mt-1 text-xs text-slate-500">${escapeHtml(row.date)} · ${escapeHtml(row.category_name)}</p></div><span class="rounded-full px-2 py-1 text-[10px] font-semibold ${statusBadge(row.status)}">${escapeHtml(row.status)}</span></div><dl class="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-slate-50 p-4 text-xs"><div><dt class="text-slate-400">Subtotal</dt><dd class="mt-1 font-mono font-semibold">${money.format(Number(row.subtotal))}</dd></div><div><dt class="text-slate-400">Tax (${Number(row.tax_rate)}%)</dt><dd class="mt-1 font-mono font-semibold">${money.format(Number(row.tax))}</dd></div><div><dt class="text-slate-400">Total</dt><dd class="mt-1 font-mono font-bold text-blue-700">${money.format(Number(row.total))}</dd></div><div><dt class="text-slate-400">Payment</dt><dd class="mt-1 font-semibold">${escapeHtml(row.payment_status)} · ${escapeHtml(row.payment_method)}</dd></div></dl><div class="mt-4"><p class="text-[10px] uppercase text-slate-400">Memo</p><p class="mt-1 text-xs text-slate-700">${escapeHtml(row.memo)}</p></div><div class="mt-4 border-t border-slate-100 pt-3 text-xs"><p><span class="text-slate-400">Receipt:</span> ${row.receipt?.name ? `<i class="fa-solid fa-paperclip ml-1 text-emerald-600"></i> ${escapeHtml(row.receipt.name)}` : 'None'}</p><p class="mt-2"><span class="text-slate-400">Journal:</span> ${row.journal_entry_id ? `<a class="font-mono text-blue-600 hover:underline" href="/journal-entries?entry=${encodeURIComponent(row.journal_entry_id)}">${escapeHtml(row.journal_entry_id)}</a>` : 'Not posted'}</p></div>`;
+        document.querySelector('#expense-view-content').innerHTML =
+            '<div class="flex items-start justify-between"><div><p class="text-sm font-semibold text-slate-900">' + escapeHtml(row.payee) + '</p><p class="mt-1 text-xs text-slate-500">' + escapeHtml(row.date) + ' · ' + escapeHtml(row.category_name) + '</p></div><span class="rounded-full px-2 py-1 text-[10px] font-semibold ' + statusClass(row.status) + '">' + escapeHtml(row.status) + '</span></div>' +
+            '<dl class="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-slate-50 p-4 text-xs"><div><dt class="text-slate-400">Subtotal</dt><dd class="mt-1 font-mono font-semibold">' + money.format(Number(row.subtotal)) + '</dd></div><div><dt class="text-slate-400">Tax</dt><dd class="mt-1 font-mono font-semibold">' + money.format(Number(row.tax)) + '</dd></div><div><dt class="text-slate-400">Total</dt><dd class="mt-1 font-mono font-bold">' + money.format(Number(row.total)) + '</dd></div><div><dt class="text-slate-400">Payment</dt><dd class="mt-1 font-semibold">' + escapeHtml(row.payment_status) + (row.due_date ? ' · due ' + escapeHtml(row.due_date) : '') + '</dd></div></dl>' +
+            '<div class="mt-4 text-xs"><p class="text-[10px] uppercase text-slate-400">Memo</p><p class="mt-1 text-slate-700">' + escapeHtml(row.memo) + '</p></div>' +
+            '<div class="mt-4 border-t border-slate-100 pt-3 text-xs"><p><span class="text-slate-400">Source journal:</span> ' + journalLink(row.journal_entry_id) + '</p><p class="mt-2"><span class="text-slate-400">Payment journal:</span> ' + journalLink(row.payment_journal_entry_id) + '</p><p class="mt-2"><span class="text-slate-400">Reversal journal:</span> ' + journalLink(row.reversal_journal_entry_id) + '</p></div>';
         setModal('view', true);
     };
 
-    const runAction = async (row, action, method, confirmation) => {
+    const openPaymentForm = (expense, payment = null) => {
+        paymentForm.reset();
+        paymentForm.elements.request_token.value = payment?.request_token || token();
+        paymentForm.elements.payment_number.value = payment?.payment_number || '';
+        paymentForm.elements.expense_number.value = expense.expense_number;
+        paymentForm.elements.expense_display.value = expense.expense_number + ' · ' + expense.payee;
+        paymentForm.elements.amount_display.value = money.format(Number(expense.total));
+        paymentForm.elements.payment_date.value = payment?.payment_date || new Date().toISOString().slice(0, 10);
+        ['cash_account_code', 'payment_method', 'reference', 'memo'].forEach((field) => {
+            if (payment) paymentForm.elements[field].value = payment[field] ?? '';
+        });
+        document.querySelector('#expense-payment-title').textContent = payment ? 'Edit ' + payment.payment_number : 'Pay ' + expense.expense_number;
+        document.querySelector('[data-expense-payment-message]').classList.add('hidden');
+        paymentForm.querySelectorAll('[data-payment-error]').forEach((element) => { element.textContent = ''; });
+        setModal('payment', true);
+    };
+
+    const runAction = async (url, method, confirmation, button) => {
         if (!confirm(confirmation)) return;
-        const button = document.querySelector(`[data-expense-${action}="${CSS.escape(row.expense_number)}"]`); if (button) button.disabled = true;
+        if (button) button.disabled = true;
         try {
-            const endpoint = action === 'submit' ? 'submit-review' : action === 'delete' ? '' : action;
-            const { response, result } = await fetchJson(urlFor(row.expense_number, endpoint), { method });
-            if (!response.ok) { alert(result.message || 'Unable to complete the action.'); if (button) button.disabled = false; return; }
+            const { response, result } = await fetchJson(url, { method });
+            if (!response.ok) {
+                alert(result.message || 'Unable to complete action.');
+                if (button) button.disabled = false;
+                return;
+            }
             location.reload();
-        } catch (_) { alert('Network error. No changes were made.'); if (button) button.disabled = false; }
+        } catch (_) {
+            alert('Network error. No changes made.');
+            if (button) button.disabled = false;
+        }
     };
 
     document.querySelector('#expense-rows').addEventListener('click', (event) => {
-        const target = event.target.closest('[data-expense-view], [data-expense-edit], [data-expense-submit], [data-expense-approve], [data-expense-delete]'); if (!target) return;
+        const target = event.target.closest('[data-expense-view], [data-expense-edit], [data-expense-submit], [data-expense-return], [data-expense-approve], [data-expense-delete], [data-expense-pay], [data-expense-reverse]');
+        if (!target) return;
         const attribute = [...target.attributes].find((item) => item.name.startsWith('data-expense-'));
-        const action = attribute.name.replace('data-expense-', ''); const row = records.find((item) => item.expense_number === attribute.value); if (!row) return;
+        const action = attribute.name.replace('data-expense-', '');
+        const row = records.find((item) => item.expense_number === attribute.value);
+        if (!row) return;
         if (action === 'view') openView(row);
-        if (action === 'edit') openForm(row);
-        if (action === 'submit') runAction(row, 'submit', 'POST', `Submit ${row.expense_number} for review? It will no longer be editable.`);
-        if (action === 'approve') runAction(row, 'approve', 'POST', `Approve and post ${row.expense_number}? This updates the ledger and cannot be edited afterward.`);
-        if (action === 'delete') runAction(row, 'delete', 'DELETE', `Delete draft ${row.expense_number}? This cannot be undone.`);
+        if (action === 'edit') openExpenseForm(row);
+        if (action === 'pay') openPaymentForm(row);
+        if (action === 'submit') runAction(expenseUrl(row.expense_number, 'submit-review'), 'POST', 'Submit ' + row.expense_number + ' for review?', target);
+        if (action === 'return') runAction(expenseUrl(row.expense_number, 'return-draft'), 'POST', 'Return ' + row.expense_number + ' to Draft?', target);
+        if (action === 'approve') runAction(expenseUrl(row.expense_number, 'approve'), 'POST', 'Approve and post ' + row.expense_number + '?', target);
+        if (action === 'delete') runAction(expenseUrl(row.expense_number), 'DELETE', 'Delete draft ' + row.expense_number + '?', target);
+        if (action === 'reverse') runAction(expenseUrl(row.expense_number, 'reverse'), 'POST', 'Reverse ' + row.expense_number + '? This creates an offset journal.', target);
     });
 
-    if (document.querySelector('#expense-new')) document.querySelector('#expense-new').addEventListener('click', () => openForm());
+    document.querySelector('#expense-payment-rows').addEventListener('click', (event) => {
+        const target = event.target.closest('[data-payment-edit], [data-payment-submit], [data-payment-delete], [data-payment-return], [data-payment-post], [data-payment-reverse]');
+        if (!target) return;
+        const attribute = [...target.attributes].find((item) => item.name.startsWith('data-payment-'));
+        const action = attribute.name.replace('data-payment-', '');
+        const payment = payments.find((item) => item.payment_number === attribute.value);
+        const expense = payment && records.find((item) => item.expense_number === payment.expense_number);
+        if (!payment || !expense) return;
+        if (action === 'edit') openPaymentForm(expense, payment);
+        if (action === 'submit') runAction(paymentUrl(payment.payment_number, 'submit-review'), 'POST', 'Submit ' + payment.payment_number + ' for review?', target);
+        if (action === 'delete') runAction(paymentUrl(payment.payment_number), 'DELETE', 'Delete draft ' + payment.payment_number + '?', target);
+        if (action === 'return') runAction(paymentUrl(payment.payment_number, 'return-draft'), 'POST', 'Return ' + payment.payment_number + ' to Draft?', target);
+        if (action === 'post') runAction(paymentUrl(payment.payment_number, 'post'), 'POST', 'Post ' + payment.payment_number + '? This updates AP, cash, and ledger.', target);
+        if (action === 'reverse') runAction(paymentUrl(payment.payment_number, 'reverse'), 'POST', 'Reverse ' + payment.payment_number + '?', target);
+    });
+
+    if (document.querySelector('#expense-new')) document.querySelector('#expense-new').addEventListener('click', () => openExpenseForm());
     document.querySelectorAll('[data-expense-close]').forEach((button) => button.addEventListener('click', () => setModal(button.dataset.expenseClose, false)));
-    form.elements.amount.addEventListener('input', updateTotals); form.elements.tax_rate.addEventListener('change', updateTotals); form.elements.payment_status.addEventListener('change', updatePaymentFields);
+    expenseForm.elements.amount.addEventListener('input', updateTotals);
+    expenseForm.elements.tax_rate.addEventListener('change', updateTotals);
+    expenseForm.elements.payment_status.addEventListener('change', updatePaymentFields);
     document.querySelector('#expense-receipt').addEventListener('change', (event) => {
-        const file = event.target.files[0]; const error = form.querySelector('[data-error="receipt"]'); error.textContent = '';
+        const file = event.target.files[0];
+        const error = expenseForm.querySelector('[data-error="receipt"]');
+        error.textContent = '';
         if (!file) { receipt = null; showReceipt(null); return; }
-        if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.type) || file.size > 5242880) { event.target.value = ''; receipt = null; showReceipt(null); error.textContent = 'Choose a JPG, PNG, or PDF no larger than 5 MB.'; return; }
+        if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.type) || file.size > 5242880) {
+            event.target.value = '';
+            receipt = null;
+            showReceipt(null);
+            error.textContent = 'Choose JPG, PNG, or PDF no larger than 5 MB.';
+            return;
+        }
         receipt = { name: file.name, type: file.type, size: file.size };
-        if (file.type.startsWith('image/')) { const reader = new FileReader(); reader.addEventListener('load', () => showReceipt(receipt, reader.result)); reader.readAsDataURL(file); } else showReceipt(receipt);
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.addEventListener('load', () => showReceipt(receipt, reader.result));
+            reader.readAsDataURL(file);
+        } else showReceipt(receipt);
     });
 
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault(); clearErrors();
-        const action = event.submitter?.value || 'draft'; const buttons = form.querySelectorAll('[type="submit"]'); buttons.forEach((button) => { button.disabled = true; });
-        const values = Object.fromEntries(new FormData(form));
-        const payload = { ...values, action, amount: Number(values.amount), tax_rate: Number(values.tax_rate), receipt };
-        const editing = Boolean(values.expense_number); const url = editing ? urlFor(values.expense_number) : page.dataset.storeUrl;
+    expenseForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        clearExpenseErrors();
+        const buttons = expenseForm.querySelectorAll('[type="submit"]');
+        buttons.forEach((button) => { button.disabled = true; });
+        const values = Object.fromEntries(new FormData(expenseForm));
+        const payload = { ...values, action: event.submitter?.value || 'draft', amount: Number(values.amount), tax_rate: Number(values.tax_rate), receipt };
+        const editing = Boolean(values.expense_number);
         try {
-            const { response, result } = await fetchJson(url, { method: editing ? 'PUT' : 'POST', body: JSON.stringify(payload) });
-            if (!response.ok) { showErrors(result.errors); showMessage(result.message || 'Unable to save expense.'); buttons.forEach((button) => { button.disabled = false; }); return; }
-            showMessage(result.message, true); setTimeout(() => location.reload(), 500);
-        } catch (_) { showMessage('Network error. Expense was not saved.'); buttons.forEach((button) => { button.disabled = false; }); }
+            const { response, result } = await fetchJson(editing ? expenseUrl(values.expense_number) : page.dataset.storeUrl, { method: editing ? 'PUT' : 'POST', body: JSON.stringify(payload) });
+            if (!response.ok) {
+                showExpenseErrors(result.errors);
+                showExpenseMessage(result.message || 'Unable to save expense.');
+                buttons.forEach((button) => { button.disabled = false; });
+                return;
+            }
+            showExpenseMessage(result.message, true);
+            setTimeout(() => location.reload(), 400);
+        } catch (_) {
+            showExpenseMessage('Network error. Expense not saved.');
+            buttons.forEach((button) => { button.disabled = false; });
+        }
     });
 
-    ['#expense-search', '#expense-category-filter', '#expense-status-filter', '#expense-payment-filter', '#expense-date-from', '#expense-date-to', '#expense-min', '#expense-max'].forEach((selector) => document.querySelector(selector).addEventListener('input', () => { currentPage = 1; render(); }));
-    document.querySelector('#expense-clear-filters').addEventListener('click', () => { ['#expense-search', '#expense-category-filter', '#expense-status-filter', '#expense-payment-filter', '#expense-date-from', '#expense-date-to', '#expense-min', '#expense-max'].forEach((selector) => { document.querySelector(selector).value = ''; }); currentPage = 1; render(); });
-    document.querySelectorAll('[data-expense-sort]').forEach((button) => button.addEventListener('click', () => { const field = button.dataset.expenseSort; sort = { field, direction: sort.field === field && sort.direction === 'asc' ? 'desc' : 'asc' }; render(); }));
-    document.querySelector('#expense-prev').addEventListener('click', () => { currentPage--; render(); }); document.querySelector('#expense-next').addEventListener('click', () => { currentPage++; render(); });
-    render();
+    paymentForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        paymentForm.querySelectorAll('[data-payment-error]').forEach((element) => { element.textContent = ''; });
+        const button = paymentForm.querySelector('[type="submit"]');
+        button.disabled = true;
+        const values = Object.fromEntries(new FormData(paymentForm));
+        const editing = Boolean(values.payment_number);
+        try {
+            const { response, result } = await fetchJson(editing ? paymentUrl(values.payment_number) : page.dataset.paymentUrl, { method: editing ? 'PUT' : 'POST', body: JSON.stringify(values) });
+            if (!response.ok) {
+                Object.entries(result.errors || {}).forEach(([field, messages]) => {
+                    const target = paymentForm.querySelector('[data-payment-error="' + field + '"]');
+                    if (target) target.textContent = messages[0];
+                });
+                const message = document.querySelector('[data-expense-payment-message]');
+                message.textContent = result.message || 'Unable to save payment.';
+                message.className = 'mt-3 rounded-lg bg-rose-50 p-3 text-xs text-rose-700';
+                button.disabled = false;
+                return;
+            }
+            location.reload();
+        } catch (_) {
+            const message = document.querySelector('[data-expense-payment-message]');
+            message.textContent = 'Network error. Payment not saved.';
+            message.className = 'mt-3 rounded-lg bg-rose-50 p-3 text-xs text-rose-700';
+            button.disabled = false;
+        }
+    });
+
+    ['#expense-search', '#expense-category-filter', '#expense-status-filter', '#expense-payment-filter', '#expense-date-from', '#expense-date-to', '#expense-min', '#expense-max'].forEach((selector) => {
+        document.querySelector(selector).addEventListener('input', () => { currentPage = 1; renderExpenses(); });
+    });
+    document.querySelector('#expense-clear-filters').addEventListener('click', () => {
+        ['#expense-search', '#expense-category-filter', '#expense-status-filter', '#expense-payment-filter', '#expense-date-from', '#expense-date-to', '#expense-min', '#expense-max'].forEach((selector) => { document.querySelector(selector).value = ''; });
+        currentPage = 1;
+        renderExpenses();
+    });
+    document.querySelectorAll('[data-expense-sort]').forEach((button) => button.addEventListener('click', () => {
+        const field = button.dataset.expenseSort;
+        sort = { field, direction: sort.field === field && sort.direction === 'asc' ? 'desc' : 'asc' };
+        renderExpenses();
+    }));
+    document.querySelector('#expense-prev').addEventListener('click', () => { currentPage--; renderExpenses(); });
+    document.querySelector('#expense-next').addEventListener('click', () => { currentPage++; renderExpenses(); });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') ['form', 'view', 'payment'].forEach((name) => setModal(name, false));
+    });
+    renderExpenses();
+    renderPayments();
 };
 
 document.addEventListener('DOMContentLoaded', setupExpenses);

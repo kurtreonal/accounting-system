@@ -33,6 +33,7 @@ const setupFinancialReports = () => {
     const updateFilters = () => {
         const visible = filterMap[activeReport] || [];
         document.querySelectorAll('[data-report-filter]').forEach((label) => { const show = visible.includes(label.dataset.reportFilter); label.classList.toggle('hidden', !show); if (!show) label.querySelector('select').value = ''; });
+        if (activeReport === 'expense-report' && !form.elements.status.value) form.elements.status.value = 'Approved';
         document.querySelectorAll('[data-report-key]').forEach((button) => {
             const active = button.dataset.reportKey === activeReport;
             button.setAttribute('aria-pressed', String(active));
@@ -92,7 +93,12 @@ const setupFinancialReports = () => {
         finally { setLoading(false); }
     };
 
-    document.querySelectorAll('[data-report-key]').forEach((button) => button.addEventListener('click', () => { activeReport = button.dataset.reportKey; updateFilters(); loadReport(); }));
+    document.querySelectorAll('[data-report-key]').forEach((button) => button.addEventListener('click', () => {
+        if (button.dataset.reportKey !== activeReport) form.elements.status.value = '';
+        activeReport = button.dataset.reportKey;
+        updateFilters();
+        loadReport();
+    }));
     form.addEventListener('submit', (event) => { event.preventDefault(); loadReport(); });
     document.querySelectorAll('[data-report-period]').forEach((button) => button.addEventListener('click', () => {
         const now = new Date(); const to = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())); let from;

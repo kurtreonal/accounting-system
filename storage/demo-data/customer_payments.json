@@ -26,5 +26,44 @@
         },
         "created_at": "2026-08-13T03:35:36+00:00",
         "updated_at": "2026-08-13T03:35:36+00:00"
+    },
+    {
+        "id": 2,
+        "receipt_number": "RCP-2026-0002",
+        "request_token": "9aeb7df3-0c4d-4d30-8065-1b45a9b19c93",
+        "payment_date": "2026-08-13",
+        "customer_id": 2,
+        "customer_code": "CUST-002",
+        "customer_name": "Nexii Client",
+        "cash_account_code": "1",
+        "cash_account_name": "Cash on Hand",
+        "reference": "OR-001",
+        "memo": "payment",
+        "amount": 24998.4,
+        "allocations": [
+            {
+                "invoice_number": "INV-2026-0002",
+                "invoice_total": 24998.4,
+                "amount": 24998.4
+            }
+        ],
+        "created_by": {
+            "id": 2,
+            "name": "Lester"
+        },
+        "status": "Posted",
+        "journal_entry_id": "JE-2026-0016",
+        "submitted_by": {
+            "id": 2,
+            "name": "Lester"
+        },
+        "submitted_at": "2026-08-13T08:12:10+00:00",
+        "posted_by": {
+            "id": 2,
+            "name": "Lester"
+        },
+        "posted_at": "2026-08-13T08:12:19+00:00",
+        "created_at": "2026-08-13T08:10:50+00:00",
+        "updated_at": "2026-08-13T08:12:19+00:00"
     }
 ]

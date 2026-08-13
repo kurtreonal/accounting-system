@@ -69,9 +69,9 @@ const setupAccountsReceivable = () => {
                     ? `<button type="button" data-record-payment="${escapeHtml(invoice.invoice_number)}" class="apm-row-action">Record Payment</button>`
                     : payable
                         ? `<button type="button" class="apm-row-action opacity-50" disabled title="Your role cannot create payment drafts, or no active cash/bank account exists.">Record Payment</button>`
-                        : `<a class="apm-row-action inline-block" href="${page.dataset.salesUrl}?invoice=${encodeURIComponent(invoice.invoice_number)}">View</a>`;
+                        : `<button type="button" data-record-detail data-record-resource="sales_invoice" data-record-id="${escapeHtml(invoice.invoice_number)}" class="apm-row-action">View</button>`;
                 return `<tr class="apm-table-row">
-                    <td><a href="${page.dataset.salesUrl}?invoice=${encodeURIComponent(invoice.invoice_number)}" class="apm-code text-blue-600 hover:underline">${escapeHtml(invoice.invoice_number)}</a></td>
+                    <td><button type="button" data-record-detail data-record-resource="sales_invoice" data-record-id="${escapeHtml(invoice.invoice_number)}" class="apm-code text-blue-600 hover:underline">${escapeHtml(invoice.invoice_number)}</button></td>
                     <td class="apm-code">${escapeHtml(invoice.invoice_date)}</td>
                     <td class="apm-code">${escapeHtml(invoice.due_date)}</td>
                     <td class="font-medium text-slate-800">${escapeHtml(invoice.customer_name)}</td>

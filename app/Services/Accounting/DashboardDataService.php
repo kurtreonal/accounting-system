@@ -4,6 +4,7 @@ namespace App\Services\Accounting;
 
 use App\Services\DemoData\AccountDataService;
 use App\Services\DemoData\JournalEntryDataService;
+use App\Services\DemoData\ExpenseDataService;
 use App\Services\DemoData\PurchaseDataService;
 use App\Services\DemoData\SalesDataService;
 use Illuminate\Support\Str;
@@ -15,6 +16,7 @@ class DashboardDataService
         private JournalEntryDataService $journals,
         private SalesDataService $sales,
         private PurchaseDataService $purchases,
+        private ExpenseDataService $expenseRecords,
     ) {}
 
     /** @return array<string, mixed> */
@@ -24,6 +26,9 @@ class DashboardDataService
         $journals = $this->journals->all();
         $invoices = $this->sales->invoices();
         $bills = $this->purchases->bills();
+        $expensePayables = array_values(array_filter($this->expenseRecords->all(), static fn (array $expense): bool =>
+            ($expense['status'] ?? '') === 'Approved' && ($expense['payment_status'] ?? '') === 'Unpaid'
+        ));
         $accountMap = collect($accounts)->keyBy(fn (array $account): string => (string) $account['code']);
         $postedHistory = array_values(array_filter(
             $journals,
@@ -74,6 +79,11 @@ class DashboardDataService
         $overdueInvoices = array_values(array_filter($currentInvoices, static fn (array $invoice): bool => $invoice['due_date'] < $today));
         $currentBills = array_values(array_filter($bills, static fn (array $bill): bool => $bill['status'] !== 'Draft' && (float) $bill['remaining_balance'] > 0));
         $overdueBills = array_values(array_filter($currentBills, static fn (array $bill): bool => $bill['due_date'] < $today));
+        $overdueExpensePayables = array_values(array_filter($expensePayables, static fn (array $expense): bool => $expense['due_date'] < $today));
+        $openPayables = (float) collect($currentBills)->sum('remaining_balance') + (float) collect($expensePayables)->sum('total');
+        $overduePayables = (float) collect($overdueBills)->sum('remaining_balance') + (float) collect($overdueExpensePayables)->sum('total');
+        $openPayableCount = count($currentBills) + count($expensePayables);
+        $overduePayableCount = count($overdueBills) + count($overdueExpensePayables);
         $hasRevenueAccounts = collect($accounts)->contains('type', 'Revenue');
         $hasExpenseAccounts = collect($accounts)->contains('type', 'Expense');
 
@@ -86,12 +96,12 @@ class DashboardDataService
             'kpis' => [
                 'cash' => $this->metric($cashAccounts !== [], collect($cashAccounts)->sum('balance'), count($cashAccounts).' '.Str::plural('account', count($cashAccounts))),
                 'receivables' => $this->metric($receivableAccounts !== [] || $invoices !== [], $invoices !== [] ? collect($currentInvoices)->sum('remaining_balance') : collect($receivableAccounts)->sum('balance'), count($currentInvoices).' open '.Str::plural('invoice', count($currentInvoices))),
-                'payables' => $this->metric($payableAccounts !== [] || $bills !== [], $bills !== [] ? collect($currentBills)->sum('remaining_balance') : collect($payableAccounts)->sum('balance'), count($currentBills).' open '.Str::plural('bill', count($currentBills))),
+                'payables' => $this->metric($payableAccounts !== [] || $bills !== [] || $expensePayables !== [], ($bills !== [] || $expensePayables !== []) ? $openPayables : collect($payableAccounts)->sum('balance'), $openPayableCount.' open '.Str::plural('payable', $openPayableCount)),
                 'revenue' => $this->metric($hasRevenueAccounts, $currentRevenue, 'Current month'),
                 'expenses' => $this->metric($hasExpenseAccounts, $currentExpenses, 'Current month'),
                 'net_income' => $this->metric($hasRevenueAccounts || $hasExpenseAccounts, $currentRevenue - $currentExpenses, 'Current month'),
                 'overdue_receivables' => $this->metric($invoices !== [], collect($overdueInvoices)->sum('remaining_balance'), count($overdueInvoices).' overdue '.Str::plural('invoice', count($overdueInvoices))),
-                'overdue_payables' => $this->metric($bills !== [], collect($overdueBills)->sum('remaining_balance'), count($overdueBills).' overdue '.Str::plural('bill', count($overdueBills))),
+                'overdue_payables' => $this->metric($bills !== [] || $expensePayables !== [], $overduePayables, $overduePayableCount.' overdue '.Str::plural('payable', $overduePayableCount)),
             ],
             'monthly' => $monthly,
             'chart_max' => $maxChartValue,

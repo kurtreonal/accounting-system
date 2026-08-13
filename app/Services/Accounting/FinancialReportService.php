@@ -237,7 +237,7 @@ class FinancialReportService
     private function expenseReport(array $filters): array
     {
         $category = trim((string) ($filters['category'] ?? ''));
-        $status = trim((string) ($filters['status'] ?? ''));
+        $status = trim((string) ($filters['status'] ?? '')) ?: 'Approved';
         $rows = collect($this->expenses->all())->filter(fn (array $expense): bool => $expense['date'] >= $filters['date_from'] && $expense['date'] <= $filters['date_to']
             && ($category === '' || (string) $expense['category_account_code'] === $category)
             && ($status === '' || $expense['status'] === $status))->map(fn (array $expense): array => [

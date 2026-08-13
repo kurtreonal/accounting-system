@@ -11,6 +11,7 @@ const setupAccountsPayable = () => {
     const bills = data.bills || [];
     const vendors = data.vendors || [];
     const payments = data.payments || [];
+    const expensePayables = data.expensePayables || [];
     const money = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
     const canMutate = can('drafts.manage');
     const canApprove = can('transactions.approve');
@@ -495,12 +496,23 @@ const setupAccountsPayable = () => {
             if (!vendorRows.has(String(bill.vendor_id))) vendorRows.set(String(bill.vendor_id), { name: bill.vendor_name, ...Object.fromEntries(bucketNames.map((name) => [name, 0])) });
             vendorRows.get(String(bill.vendor_id))[bucket] += balance;
         });
+        if (!vendorFilter) {
+            expensePayables.filter((expense) => expense.expense_date <= asOf).forEach((expense) => {
+                const balance = Number(expense.amount || 0);
+                if (balance <= 0) return;
+                const days = Math.floor((new Date(asOf + 'T00:00:00') - new Date(expense.due_date + 'T00:00:00')) / 86400000);
+                const bucket = bucketName(days);
+                const key = 'expense-' + expense.expense_number;
+                totals[bucket] += balance;
+                vendorRows.set(key, { name: expense.payee + ' (' + expense.expense_number + ')', ...Object.fromEntries(bucketNames.map((name) => [name, name === bucket ? balance : 0])) });
+            });
+        }
         document.querySelector('#ap-aging-cards').innerHTML = bucketNames.map((name, index) => `<article class="apm-summary-card dashboard-enter" style="animation-delay:${index * 50}ms"><p>${name}</p><strong>${money.format(totals[name])}</strong><span>Outstanding balance</span></article>`).join('');
         const rows = [...vendorRows.values()];
         document.querySelector('#ap-aging-rows').innerHTML = rows.length ? rows.map((vendor) => {
             const total = bucketNames.reduce((sum, name) => sum + vendor[name], 0);
             return `<tr class="apm-table-row"><td class="font-medium text-slate-800">${escapeHtml(vendor.name)}</td>${bucketNames.map((name) => `<td class="apm-money text-right">${money.format(vendor[name])}</td>`).join('')}<td class="apm-money text-right font-bold">${money.format(total)}</td></tr>`;
-        }).join('') : '<tr><td colspan="7" class="px-5 py-14 text-center text-slate-500">No open vendor bills for selected filters.</td></tr>';
+        }).join('') : '<tr><td colspan="7" class="px-5 py-14 text-center text-slate-500">No open payables for selected filters.</td></tr>';
     };
     document.querySelector('#ap-as-of').addEventListener('change', renderAging);
     document.querySelector('#ap-aging-vendor').addEventListener('change', renderAging);

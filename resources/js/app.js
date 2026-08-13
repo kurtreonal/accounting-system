@@ -9,6 +9,8 @@ import './cash-bank';
 import './expenses';
 import './financial-reports';
 import './tax-settings';
+import './audit-trail';
+import './record-details';
 
 const setupSidebarToggle = () => {
     const button = document.querySelector('#sidebar-toggle');

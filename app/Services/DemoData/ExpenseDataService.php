@@ -94,12 +94,24 @@ class ExpenseDataService
         });
     }
 
+    /** @return array<string, mixed> */
+    public function returnToDraft(string $expenseNumber): array
+    {
+        return $this->mutate(function (array &$rows) use ($expenseNumber): array {
+            $index = $this->index($rows, $expenseNumber);
+            if (($rows[$index]['status'] ?? '') !== 'For Review') throw new RuntimeException('Only expenses for review can be returned to draft.');
+            $rows[$index]['status'] = 'Draft';
+            $rows[$index]['updated_at'] = now()->toIso8601String();
+            return $rows[$index];
+        });
+    }
+
     /** @param array<string, mixed> $actor
      * @return array<string, mixed>
      */
-    public function approve(string $expenseNumber, string $journalNumber, array $actor): array
+    public function approve(string $expenseNumber, string $journalNumber, array $actor, array $links = []): array
     {
-        return $this->mutate(function (array &$rows) use ($expenseNumber, $journalNumber, $actor): array {
+        return $this->mutate(function (array &$rows) use ($expenseNumber, $journalNumber, $actor, $links): array {
             $index = $this->index($rows, $expenseNumber);
             if (($rows[$index]['status'] ?? '') !== 'For Review') {
                 throw new RuntimeException('Only expenses for review can be approved.');
@@ -108,11 +120,54 @@ class ExpenseDataService
                 ...$rows[$index],
                 'status' => 'Approved',
                 'journal_entry_id' => $journalNumber,
+                ...$links,
                 'approved_by' => ['id' => $actor['id'] ?? null, 'name' => $actor['name'] ?? 'Demo User'],
                 'approved_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
             ];
 
+            return $rows[$index];
+        });
+    }
+
+    /** @return array<string, mixed> */
+    public function markPaid(string $expenseNumber, string $paymentNumber, string $journalNumber, array $actor, array $paymentDetails = []): array
+    {
+        return $this->mutate(function (array &$rows) use ($expenseNumber, $paymentNumber, $journalNumber, $actor, $paymentDetails): array {
+            $index = $this->index($rows, $expenseNumber);
+            if (($rows[$index]['status'] ?? '') !== 'Approved' || ($rows[$index]['payment_status'] ?? '') !== 'Unpaid') throw new RuntimeException('Only approved unpaid expenses can be paid.');
+            $rows[$index] = [...$rows[$index], 'payment_status' => 'Paid', 'expense_payment_number' => $paymentNumber,
+                'payment_journal_entry_id' => $journalNumber, 'paid_by' => ['id' => $actor['id'] ?? null, 'name' => $actor['name'] ?? 'Demo User'],
+                'payment_method' => $paymentDetails['payment_method'] ?? $rows[$index]['payment_method'] ?? null,
+                'cash_account_code' => $paymentDetails['cash_account_code'] ?? $rows[$index]['cash_account_code'] ?? null,
+                'paid_at' => now()->toIso8601String(), 'updated_at' => now()->toIso8601String()];
+            return $rows[$index];
+        });
+    }
+
+    /** @return array<string, mixed> */
+    public function markPaymentReversed(string $expenseNumber): array
+    {
+        return $this->mutate(function (array &$rows) use ($expenseNumber): array {
+            $index = $this->index($rows, $expenseNumber);
+            if (($rows[$index]['status'] ?? '') !== 'Approved' || ($rows[$index]['payment_status'] ?? '') !== 'Paid' || empty($rows[$index]['payment_journal_entry_id'])) throw new RuntimeException('Only later-paid expenses can have their payment reversed.');
+            $rows[$index] = [...$rows[$index], 'payment_status' => 'Unpaid', 'expense_payment_number' => null,
+                'payment_journal_entry_id' => null, 'payment_method' => null, 'cash_account_code' => null,
+                'paid_by' => null, 'paid_at' => null, 'updated_at' => now()->toIso8601String()];
+            return $rows[$index];
+        });
+    }
+
+    /** @return array<string, mixed> */
+    public function markReversed(string $expenseNumber, string $reversalJournal, array $actor): array
+    {
+        return $this->mutate(function (array &$rows) use ($expenseNumber, $reversalJournal, $actor): array {
+            $index = $this->index($rows, $expenseNumber);
+            if (($rows[$index]['status'] ?? '') !== 'Approved') throw new RuntimeException('Only approved expenses can be reversed.');
+            if (! empty($rows[$index]['payment_journal_entry_id'])) throw new RuntimeException('Reverse the later expense payment before reversing this expense.');
+            $rows[$index] = [...$rows[$index], 'status' => 'Reversed', 'reversal_journal_entry_id' => $reversalJournal,
+                'reversed_by' => ['id' => $actor['id'] ?? null, 'name' => $actor['name'] ?? 'Demo User'],
+                'reversed_at' => now()->toIso8601String(), 'updated_at' => now()->toIso8601String()];
             return $rows[$index];
         });
     }

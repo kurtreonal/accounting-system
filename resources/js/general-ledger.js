@@ -57,8 +57,11 @@ const setupGeneralLedger = () => {
         row.className = 'apm-table-row dashboard-enter';
         row.append(el('td', item.date, 'font-mono text-[11px]'));
         const journalCell = row.insertCell();
-        const link = el('a', item.journal_number, 'font-mono text-blue-600 hover:underline');
-        link.href = `${page.dataset.journalUrl}?entry=${encodeURIComponent(item.journal_number)}`;
+        const link = el('button', item.journal_number, 'font-mono text-blue-600 hover:underline');
+        link.type = 'button';
+        link.dataset.recordDetail = '';
+        link.dataset.recordResource = 'journal_entry';
+        link.dataset.recordId = item.journal_number;
         journalCell.append(link);
         const descriptionCell = row.insertCell();
         descriptionCell.append(el('span', item.line_description || item.description, 'font-medium'));

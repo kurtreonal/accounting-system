@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Services\Accounting\AccountingPostingService;
+use App\Services\Accounting\StaticAccountingTransaction;
 use App\Services\DemoAccessService;
 use App\Services\DemoData\AccountDataService;
 use App\Services\DemoData\AuditLogDataService;
 use App\Services\DemoData\CashBankDataService;
 use App\Services\DemoData\ExpenseDataService;
+use App\Services\DemoData\ExpensePaymentDataService;
 use App\Services\DemoData\TaxCodeDataService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -20,7 +22,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExpenseController extends Controller
 {
-    public function index(Request $request, ExpenseDataService $expenses, AccountDataService $accounts, TaxCodeDataService $taxCodes, DemoAccessService $access): View|RedirectResponse
+    public function index(Request $request, ExpenseDataService $expenses, ExpensePaymentDataService $expensePayments, AccountDataService $accounts, TaxCodeDataService $taxCodes, DemoAccessService $access): View|RedirectResponse
     {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
@@ -28,19 +30,23 @@ class ExpenseController extends Controller
         $active = collect($accounts->all(['status' => 'Active']));
         $records = collect($expenses->all())->sortByDesc(fn (array $row): string => $row['date'].'-'.$row['id'])->values()->all();
         if ($access->isViewer($request)) {
-            $records = array_values(array_filter($records, static fn (array $row): bool => $row['status'] === 'Approved'));
+            $records = array_values(array_filter($records, static fn (array $row): bool => in_array($row['status'], ['Approved', 'Reversed'], true)));
         }
+        $payments = $expensePayments->all();
+        if ($access->isViewer($request)) $payments = array_values(array_filter($payments, static fn (array $row): bool => in_array($row['status'], ['Posted', 'Reversed'], true)));
 
         return view('expenses', [
             'user' => $request->session()->get('demo_user'),
             'expenses' => $records,
+            'expensePayments' => $payments,
             'expenseAccounts' => $active->where('type', 'Expense')->values()->all(),
             'cashAccounts' => $active->filter(fn (array $account): bool => $this->isCashOrBank($account))->values()->all(),
             'vatRates' => $taxCodes->activeVatRates(),
             'metrics' => [
-                'total' => round((float) collect($records)->sum('total'), 2),
+                'total' => round((float) collect($records)->where('status', 'Approved')->sum('total'), 2),
                 'approved' => round((float) collect($records)->where('status', 'Approved')->sum('total'), 2),
                 'pending' => round((float) collect($records)->where('status', 'For Review')->sum('total'), 2),
+                'draft_count' => collect($records)->where('status', 'Draft')->count(),
                 'count' => count($records),
                 'receipts' => collect($records)->filter(fn (array $row): bool => filled($row['receipt']['name'] ?? null))->count(),
             ],
@@ -123,38 +129,65 @@ class ExpenseController extends Controller
         return response()->json(['message' => 'Expense submitted for review.', 'expense' => $expense]);
     }
 
-    public function approve(Request $request, string $expenseNumber, ExpenseDataService $expenses, AccountingPostingService $posting, CashBankDataService $cashBank, AuditLogDataService $auditLogs): JsonResponse
+    public function returnToDraft(Request $request, string $expenseNumber, ExpenseDataService $expenses, AuditLogDataService $auditLogs): JsonResponse
+    {
+        try {
+            $expense = $expenses->returnToDraft($expenseNumber);
+            $auditLogs->record($this->actor($request), 'returned_to_draft', $expenseNumber, ['before' => 'For Review', 'after' => 'Draft'], 'expense');
+            return response()->json(['message' => 'Expense returned to draft.', 'expense' => $expense]);
+        } catch (RuntimeException $exception) { return response()->json(['message' => $exception->getMessage()], 409); }
+    }
+
+    public function approve(Request $request, string $expenseNumber, ExpenseDataService $expenses, AccountingPostingService $posting, CashBankDataService $cashBank, AuditLogDataService $auditLogs, StaticAccountingTransaction $transaction): JsonResponse
     {
         if ($response = $this->denyApproval($request)) {
             return $response;
         }
         try {
-            $expense = $expenses->find($expenseNumber);
-            if (($expense['status'] ?? '') !== 'For Review') {
-                throw new RuntimeException('Only expenses for review can be approved.');
-            }
-            $journal = $posting->postExpense($expense, $this->actor($request));
-            if ($expense['payment_status'] === 'Paid') {
-                $cashBank->recordTransaction([
-                    'request_token' => $expense['request_token'],
-                    'type' => 'withdrawal',
-                    'date' => $expense['date'],
-                    'amount' => $expense['total'],
-                    'account_code' => $expense['cash_account_code'],
-                    'offset_account_code' => $expense['category_account_code'],
-                    'reference' => $expense['expense_number'],
-                    'description' => $expense['payee'].' - '.$expense['memo'],
-                    'journal_entry_id' => $journal['journal_number'],
-                    'created_by' => ['id' => $request->session()->get('demo_user.id'), 'name' => $request->session()->get('demo_user.name')],
-                ]);
-            }
-            $expense = $expenses->approve($expenseNumber, $journal['journal_number'], $this->actor($request));
-            $auditLogs->record($this->actor($request), 'approved', $expenseNumber, ['journal_entry_id' => $journal['journal_number']], 'expense');
+            $result = $transaction->run(function () use ($request, $expenseNumber, $expenses, $posting, $cashBank, $auditLogs): array {
+                $expense = $expenses->find($expenseNumber);
+                if (($expense['status'] ?? '') !== 'For Review') throw new RuntimeException('Only expenses for review can be approved.');
+                if ($expense['payment_status'] === 'Unpaid' && empty($expense['due_date'])) throw new RuntimeException('Unpaid expenses require a due date before approval.');
+                $journal = $posting->postExpense($expense, $this->actor($request));
+                $links = [];
+                if ($expense['payment_status'] === 'Paid') {
+                    $movement = $cashBank->recordTransaction(['request_token' => $expense['request_token'], 'type' => 'withdrawal', 'date' => $expense['date'], 'amount' => $expense['total'],
+                        'account_code' => $expense['cash_account_code'], 'offset_account_code' => $expense['category_account_code'], 'reference' => $expense['expense_number'],
+                        'description' => $expense['payee'].' - '.$expense['memo'], 'journal_entry_id' => $journal['journal_number'], 'created_by' => $this->actor($request)]);
+                    $links['cash_transaction_id'] = $movement['id'];
+                }
+                $expense = $expenses->approve($expenseNumber, $journal['journal_number'], $this->actor($request), $links);
+                $auditLogs->record($this->actor($request), 'approved', $expenseNumber, ['before' => 'For Review', 'after' => 'Approved', 'journal_entry_id' => $journal['journal_number']], 'expense');
+                return compact('expense', 'journal');
+            });
+            ['expense' => $expense, 'journal' => $journal] = $result;
         } catch (RuntimeException $exception) {
             return response()->json(['message' => $exception->getMessage()], 409);
         }
 
         return response()->json(['message' => 'Expense approved and posted to the ledger.', 'expense' => $expense, 'journal' => $journal]);
+    }
+
+    public function reverse(Request $request, string $expenseNumber, ExpenseDataService $expenses, AccountingPostingService $posting, CashBankDataService $cashBank, AuditLogDataService $auditLogs, StaticAccountingTransaction $transaction): JsonResponse
+    {
+        try {
+            $result = $transaction->run(function () use ($request, $expenseNumber, $expenses, $posting, $cashBank, $auditLogs): array {
+                $expense = $expenses->find($expenseNumber);
+                if (($expense['status'] ?? '') !== 'Approved') throw new RuntimeException('Only approved expenses can be reversed.');
+                if (! empty($expense['payment_journal_entry_id'])) throw new RuntimeException('Reverse the later expense payment before reversing this expense.');
+                $movement = null;
+                if (! empty($expense['cash_transaction_id'])) {
+                    $movement = $cashBank->findTransaction((string) $expense['cash_transaction_id']);
+                    if (($movement['cleared'] ?? false) || ($movement['reconciliation_id'] ?? null)) throw new RuntimeException('Reconciled expenses cannot be reversed.');
+                }
+                $reversal = $posting->reverseExpenseSource($expense['journal_entry_id'], $this->actor($request), 'Expense');
+                if ($movement) $cashBank->markReversed((int) $movement['id'], $reversal['reversal']['journal_number'], $reversal['reversal']['journal_number']);
+                $expense = $expenses->markReversed($expenseNumber, $reversal['reversal']['journal_number'], $this->actor($request));
+                $auditLogs->record($this->actor($request), 'reversed', $expenseNumber, ['before' => 'Approved', 'after' => 'Reversed', 'reversal_journal_entry_id' => $reversal['reversal']['journal_number']], 'expense');
+                return ['expense' => $expense, 'reversal' => $reversal['reversal']];
+            });
+            return response()->json(['message' => 'Expense reversed.', ...$result]);
+        } catch (RuntimeException $exception) { return response()->json(['message' => $exception->getMessage()], 409); }
     }
 
     public function destroy(Request $request, string $expenseNumber, ExpenseDataService $expenses, AuditLogDataService $auditLogs): JsonResponse
@@ -179,7 +212,7 @@ class ExpenseController extends Controller
         }
         $rows = $expenses->all();
         if ($access->isViewer($request)) {
-            $rows = array_values(array_filter($rows, static fn (array $row): bool => $row['status'] === 'Approved'));
+            $rows = array_values(array_filter($rows, static fn (array $row): bool => in_array($row['status'], ['Approved', 'Reversed'], true)));
         }
 
         return response()->streamDownload(function () use ($rows): void {
@@ -204,7 +237,8 @@ class ExpenseController extends Controller
             'amount' => ['required', 'numeric', 'gt:0', 'max:999999999.99'],
             'tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'payment_status' => ['required', Rule::in(['Paid', 'Unpaid'])],
-            'payment_method' => ['required', Rule::in(['Cash', 'Credit Card', 'Bank Transfer', 'Other'])],
+            'due_date' => ['nullable', 'required_if:payment_status,Unpaid', 'date_format:Y-m-d', 'after_or_equal:date'],
+            'payment_method' => ['nullable', 'required_if:payment_status,Paid', Rule::in(['Cash', 'Credit Card', 'Bank Transfer', 'Other'])],
             'cash_account_code' => ['nullable', 'string'],
             'memo' => ['required', 'string', 'max:180'],
             'receipt' => ['nullable', 'array'],
@@ -244,7 +278,8 @@ class ExpenseController extends Controller
             'category_account_code' => $data['category_account_code'],
             'category_name' => collect(app(AccountDataService::class)->all())->firstWhere('code', $data['category_account_code'])['name'],
             'subtotal' => $subtotal, 'tax_rate' => (float) $data['tax_rate'], 'tax' => $tax, 'total' => round($subtotal + $tax, 2),
-            'payment_status' => $data['payment_status'], 'payment_method' => $data['payment_method'],
+            'payment_status' => $data['payment_status'], 'payment_method' => $data['payment_status'] === 'Paid' ? $data['payment_method'] : null,
+            'due_date' => $data['payment_status'] === 'Unpaid' ? $data['due_date'] : null,
             'cash_account_code' => $data['payment_status'] === 'Paid' ? $data['cash_account_code'] : null,
             'memo' => trim($data['memo']), 'receipt' => $data['receipt'] ?? null,
             'status' => 'Draft',

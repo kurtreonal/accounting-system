@@ -267,6 +267,49 @@ class AccountingPostingService
         );
     }
 
+    /** @param array<string, mixed> $expense
+     * @param array<string, mixed> $payment
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     */
+    public function postExpensePayment(array $expense, array $payment, array $actor): array
+    {
+        $accounts = $this->activeAccounts();
+        $cash = $this->accountByCode($accounts, (string) $payment['cash_account_code']);
+        if (! $this->isCashOrBank($cash)) throw new RuntimeException('Select an active cash or bank account.');
+        if ((float) $cash['balance'] < (float) $payment['amount']) throw new RuntimeException('Expense payment exceeds the available cash or bank balance.');
+        $payable = $this->findAccount($accounts, fn (array $account): bool => $account['type'] === 'Liability' && $this->nameContains($account, 'payable') && ! $this->nameContains($account, 'tax'));
+        $total = $this->money($payment['amount']);
+
+        return $this->postSource(
+            'expense-payment:'.$payment['request_token'],
+            [
+                'date' => $payment['payment_date'],
+                'reference' => trim((string) ($payment['reference'] ?? '')) ?: $payment['payment_number'],
+                'description' => 'Expense payment '.$payment['payment_number'].' - '.$expense['payee'],
+                'source_type' => 'Expense Payment',
+                'lines' => [
+                    $this->line($payable, 'Expense payable settled '.$expense['expense_number'], (string) $expense['payee'], $total, 0),
+                    $this->line($cash, 'Expense payment disbursed '.$expense['expense_number'], (string) $expense['payee'], 0, $total),
+                ],
+            ],
+            $actor,
+            null,
+            ['expense_number' => $expense['expense_number'], 'payment_number' => $payment['payment_number']],
+        );
+    }
+
+    /** @return array{entry: array<string, mixed>, reversal: array<string, mixed>} */
+    public function reverseExpenseSource(string $journalNumber, array $actor, string $expectedSource): array
+    {
+        $entry = $this->journals->find($journalNumber);
+        if (($entry['source_type'] ?? '') !== $expectedSource) throw new RuntimeException('The linked journal does not match this expense source.');
+        $result = $this->journals->reverse($journalNumber, $actor);
+        $this->assertBalanced($result['reversal']['lines']);
+        $this->accounts->applyJournalLines($result['reversal']['lines']);
+        return $result;
+    }
+
     /** @param array<string, mixed> $actor
      * @return array<string, mixed>
      */

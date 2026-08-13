@@ -17,17 +17,17 @@
     },
     {
         "id": 3,
-        "name": "Demo Encoder",
-        "email": "encoder@nexii.ph",
-        "password_hash": "$2y$12$eMtuvZRJyWGqV8I/WcrT8ehfCGl6791hQK5OhGWuB8KRWJfj4bb4K",
+        "name": "Kristian",
+        "email": "encoder@gmail.com",
+        "password_hash": "$2y$12$QTex5K3nDnEpB41nIWTGtuZXGzPqFlfF9fBOVWo6D99U/Q5aczcd2",
         "role": "Encoder / Staff",
         "active": true
     },
     {
         "id": 4,
-        "name": "Demo Auditor",
-        "email": "viewer@nexii.ph",
-        "password_hash": "$2y$12$eMtuvZRJyWGqV8I/WcrT8ehfCGl6791hQK5OhGWuB8KRWJfj4bb4K",
+        "name": "Jonard",
+        "email": "auditor@gmail.com",
+        "password_hash": "$2y$12$QQyPjqSq54a2L6ZRHyuSTeA5XMboy2N2PK30X2k6GRmSKal/kHAjO",
         "role": "Viewer / Auditor",
         "active": true
     }

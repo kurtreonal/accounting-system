@@ -37,7 +37,7 @@
             <p>Overdue</p><strong>&#8369;{{ number_format($metrics['overdue'], 2) }}</strong><span>Past due balances</span>
         </article>
         <article class="apm-summary-card dashboard-enter [animation-delay:150ms]">
-            <p>Bills</p><strong>{{ $metrics['bill_count'] }}</strong><span>{{ $metrics['paid_count'] }} paid</span>
+            <p>Payable Records</p><strong>{{ $metrics['bill_count'] + $metrics['expense_payable_count'] }}</strong><span>{{ $metrics['expense_payable_count'] }} from expenses</span>
         </article>
         <article class="apm-summary-card dashboard-enter [animation-delay:200ms]">
             <p>Vendors</p><strong>{{ $metrics['vendor_count'] }}</strong><span>{{ $metrics['active_vendor_count'] }} active</span>
@@ -48,6 +48,7 @@
         <button type="button" class="apm-tab border-blue-600 text-blue-600" data-ap-tab="bills" role="tab" aria-selected="true">Bills</button>
         <button type="button" class="apm-tab" data-ap-tab="vendors" role="tab" aria-selected="false">Vendors</button>
         <button type="button" class="apm-tab" data-ap-tab="payments" role="tab" aria-selected="false">Payments</button>
+        <button type="button" class="apm-tab" data-ap-tab="expense-payables" role="tab" aria-selected="false">Expense Payables</button>
         <button type="button" class="apm-tab" data-ap-tab="aging" role="tab" aria-selected="false">Aging Report</button>
     </div>
 
@@ -150,9 +151,35 @@
         </div>
     </section>
 
+    <section data-ap-panel="expense-payables" hidden class="dashboard-enter mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <header class="border-b border-slate-100 px-5 py-4">
+            <h2 class="text-sm font-semibold text-slate-900">Expense Payables</h2>
+            <p class="mt-0.5 text-xs text-slate-500">Approved unpaid expenses. Payment stays inside Expenses.</p>
+        </header>
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[850px] text-left text-xs">
+                <thead class="bg-slate-50 text-[10px] uppercase text-slate-500"><tr><th class="px-4 py-3">Expense</th><th class="px-4 py-3">Expense Date</th><th class="px-4 py-3">Due Date</th><th class="px-4 py-3">Payee</th><th class="px-4 py-3 text-right">Outstanding</th><th class="px-4 py-3">Journal</th><th class="px-4 py-3">Status</th></tr></thead>
+                <tbody>
+                    @forelse ($expensePayables as $payable)
+                        <tr class="apm-table-row">
+                            <td><button type="button" data-record-detail data-record-resource="expense" data-record-id="{{ $payable['expense_number'] }}" class="apm-code text-blue-600 hover:underline">{{ $payable['expense_number'] }}</button></td>
+                            <td class="apm-code">{{ $payable['expense_date'] }}</td><td class="apm-code">{{ $payable['due_date'] }}</td>
+                            <td class="font-medium text-slate-800">{{ $payable['payee'] }}</td>
+                            <td class="apm-money text-right">&#8369;{{ number_format($payable['amount'], 2) }}</td>
+                            <td class="apm-code">{{ $payable['journal_entry_id'] ?? '—' }}</td>
+                            <td><span class="inline-flex rounded-md bg-amber-100 px-2 py-1 text-[10px] font-medium text-amber-700">Unpaid</span></td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="7" class="px-5 py-12 text-center text-slate-500">No approved unpaid expenses.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </section>
+
     <section data-ap-panel="aging" hidden class="dashboard-enter mt-5">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div><h2 class="text-sm font-semibold text-slate-900">Accounts Payable Aging</h2><p class="mt-1 text-xs text-slate-500">Outstanding posted bills grouped by due date</p></div>
+            <div><h2 class="text-sm font-semibold text-slate-900">Accounts Payable Aging</h2><p class="mt-1 text-xs text-slate-500">Outstanding posted bills and approved unpaid expenses grouped by due date</p></div>
             <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
                 <label class="text-xs font-medium text-slate-600">Vendor<select id="ap-aging-vendor" class="mt-1 h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none focus:border-blue-400 sm:min-w-48"><option value="">All vendors</option>@foreach ($vendors as $vendor)<option value="{{ $vendor['id'] }}">{{ $vendor['name'] }}</option>@endforeach</select></label>
                 <label class="text-xs font-medium text-slate-600">As of date<input id="ap-as-of" type="date" value="{{ now()->toDateString() }}" class="mt-1 h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none focus:border-blue-400"></label>
@@ -166,6 +193,7 @@
         'bills' => $bills,
         'vendors' => $vendors,
         'payments' => $payments,
+        'expensePayables' => $expensePayables,
         'cashAccounts' => $cashAccounts,
         'purchaseAccounts' => $purchaseAccounts,
         'accounts' => $postingAccounts,

@@ -13,7 +13,7 @@ class ExpenseTest extends TestCase
     {
         parent::setUp();
         $suffix = uniqid('', true);
-        foreach (['accounts', 'journals', 'audit', 'expenses', 'transactions', 'tax_codes'] as $name) {
+        foreach (['accounts', 'journals', 'audit', 'expenses', 'expense_payments', 'transactions', 'reconciliations', 'tax_codes'] as $name) {
             $this->paths[$name] = storage_path("framework/testing/expense-{$name}-{$suffix}.json");
             file_put_contents($this->paths[$name], '[]');
         }
@@ -28,7 +28,9 @@ class ExpenseTest extends TestCase
         config()->set('accounting.journal_entries_path', $this->paths['journals']);
         config()->set('accounting.audit_logs_path', $this->paths['audit']);
         config()->set('accounting.expenses_path', $this->paths['expenses']);
+        config()->set('accounting.expense_payments_path', $this->paths['expense_payments']);
         config()->set('accounting.bank_transactions_path', $this->paths['transactions']);
+        config()->set('accounting.bank_reconciliations_path', $this->paths['reconciliations']);
         config()->set('accounting.tax_codes_path', $this->paths['tax_codes']);
     }
 
@@ -73,7 +75,7 @@ class ExpenseTest extends TestCase
 
     public function test_unpaid_expense_credits_payable_and_drafts_can_be_updated_and_deleted(): void
     {
-        $draftPayload = [...$this->payload(), 'request_token' => (string) Str::uuid(), 'action' => 'draft', 'payment_status' => 'Unpaid', 'cash_account_code' => null, 'tax_rate' => 0];
+        $draftPayload = [...$this->payload(), 'request_token' => (string) Str::uuid(), 'action' => 'draft', 'payment_status' => 'Unpaid', 'payment_method' => null, 'cash_account_code' => null, 'due_date' => '2026-09-12', 'tax_rate' => 0];
         $created = $this->withSession($this->demoSession())->postJson('/expenses', $draftPayload)->assertCreated()->assertJsonPath('expense.status', 'Draft');
         $number = $created->json('expense.expense_number');
         $this->withSession($this->demoSession())->putJson("/expenses/{$number}", [...$draftPayload, 'payee' => 'Updated Payee'])->assertOk()->assertJsonPath('expense.payee', 'Updated Payee');
@@ -84,6 +86,88 @@ class ExpenseTest extends TestCase
         $accounts = collect(json_decode(file_get_contents($this->paths['accounts']), true, flags: JSON_THROW_ON_ERROR))->keyBy('code');
         $this->assertSame(1000.0, (float) $accounts['5100']['balance']);
         $this->assertSame(1000.0, (float) $accounts['2000']['balance']);
+    }
+
+    public function test_unpaid_expense_full_payment_workflow_updates_ap_cash_and_ledger_once(): void
+    {
+        $expensePayload = [...$this->payload(), 'request_token' => (string) Str::uuid(), 'payment_status' => 'Unpaid',
+            'payment_method' => null, 'cash_account_code' => null, 'due_date' => '2026-09-12', 'tax_rate' => 0];
+        $created = $this->withSession($this->demoSession('Encoder / Staff'))->postJson('/expenses', $expensePayload)->assertCreated();
+        $expenseNumber = $created->json('expense.expense_number');
+        $this->withSession($this->demoSession())->postJson("/expenses/{$expenseNumber}/approve")->assertOk();
+        $this->withSession($this->demoSession())->get('/accounts-payable')->assertOk()->assertSee($expenseNumber);
+
+        $paymentPayload = ['request_token' => (string) Str::uuid(), 'expense_number' => $expenseNumber,
+            'payment_date' => '2026-08-20', 'cash_account_code' => '1000', 'payment_method' => 'Bank Transfer',
+            'reference' => 'PAY-100', 'memo' => 'Full settlement'];
+        $payment = $this->withSession($this->demoSession('Encoder / Staff'))->postJson('/expense-payments', $paymentPayload)
+            ->assertCreated()->assertJsonPath('payment.status', 'Draft');
+        $paymentNumber = $payment->json('payment.payment_number');
+        $this->withSession($this->demoSession('Viewer / Auditor'))->get('/expenses')->assertOk()->assertDontSee($paymentNumber);
+        $this->withSession($this->demoSession('Encoder / Staff'))->postJson("/expense-payments/{$paymentNumber}/submit-review")
+            ->assertOk()->assertJsonPath('payment.status', 'For Review');
+        $this->withSession($this->demoSession('Encoder / Staff'))->postJson("/expense-payments/{$paymentNumber}/submit-review")->assertStatus(409);
+        $this->withSession($this->demoSession())->postJson("/expense-payments/{$paymentNumber}/return-draft")
+            ->assertOk()->assertJsonPath('payment.status', 'Draft');
+        $this->withSession($this->demoSession('Encoder / Staff'))->putJson("/expense-payments/{$paymentNumber}", [...$paymentPayload, 'memo' => 'Reviewed full settlement'])
+            ->assertOk()->assertJsonPath('payment.memo', 'Reviewed full settlement');
+        $this->withSession($this->demoSession('Encoder / Staff'))->postJson("/expense-payments/{$paymentNumber}/submit-review")->assertOk();
+        $this->withSession($this->demoSession('Encoder / Staff'))->postJson("/expense-payments/{$paymentNumber}/post")->assertForbidden();
+        $this->withSession($this->demoSession())->postJson("/expense-payments/{$paymentNumber}/post")
+            ->assertOk()->assertJsonPath('payment.status', 'Posted')->assertJsonPath('expense.payment_status', 'Paid');
+
+        $this->withSession($this->demoSession())->get('/accounts-payable')->assertOk()->assertDontSee($expenseNumber);
+        $this->withSession($this->demoSession())->postJson('/expense-payments', [...$paymentPayload, 'request_token' => (string) Str::uuid()])->assertStatus(409);
+        $this->withSession($this->demoSession())->postJson("/expense-payments/{$paymentNumber}/post")->assertStatus(409);
+
+        $this->withSession($this->demoSession())->postJson("/expense-payments/{$paymentNumber}/reverse")
+            ->assertOk()->assertJsonPath('payment.status', 'Reversed')->assertJsonPath('expense.payment_status', 'Unpaid');
+        $this->withSession($this->demoSession())->postJson("/expenses/{$expenseNumber}/reverse")
+            ->assertOk()->assertJsonPath('expense.status', 'Reversed');
+
+        $accounts = collect(json_decode(file_get_contents($this->paths['accounts']), true, flags: JSON_THROW_ON_ERROR))->keyBy('code');
+        $this->assertSame(10000.0, (float) $accounts['1000']['balance']);
+        $this->assertSame(0.0, (float) $accounts['2000']['balance']);
+        $this->assertSame(0.0, (float) $accounts['5100']['balance']);
+        $this->assertCount(4, json_decode(file_get_contents($this->paths['journals']), true, flags: JSON_THROW_ON_ERROR));
+        $transactions = json_decode(file_get_contents($this->paths['transactions']), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertCount(1, $transactions);
+        $this->assertNotEmpty($transactions[0]['reversed_at']);
+    }
+
+    public function test_reconciled_paid_expense_cannot_be_reversed(): void
+    {
+        $created = $this->withSession($this->demoSession())->postJson('/expenses', $this->payload())->assertCreated();
+        $number = $created->json('expense.expense_number');
+        $this->withSession($this->demoSession())->postJson("/expenses/{$number}/approve")->assertOk();
+        $transactions = json_decode(file_get_contents($this->paths['transactions']), true, flags: JSON_THROW_ON_ERROR);
+        $transactions[0]['cleared'] = true;
+        $transactions[0]['reconciliation_id'] = 'REC-TEST-001';
+        file_put_contents($this->paths['transactions'], json_encode($transactions, JSON_THROW_ON_ERROR));
+
+        $this->withSession($this->demoSession())->postJson("/expenses/{$number}/reverse")
+            ->assertStatus(409)->assertJsonPath('message', 'Reconciled expenses cannot be reversed.');
+        $this->assertSame('Approved', json_decode(file_get_contents($this->paths['expenses']), true, flags: JSON_THROW_ON_ERROR)[0]['status']);
+        $this->assertCount(1, json_decode(file_get_contents($this->paths['journals']), true, flags: JSON_THROW_ON_ERROR));
+    }
+
+    public function test_failed_approval_restores_all_static_accounting_files(): void
+    {
+        $created = $this->withSession($this->demoSession())->postJson('/expenses', $this->payload())->assertCreated();
+        $number = $created->json('expense.expense_number');
+        $before = collect(['accounts', 'journals', 'audit', 'expenses', 'expense_payments', 'transactions', 'reconciliations'])
+            ->mapWithKeys(fn (string $name): array => [$name => file_get_contents($this->paths[$name])])->all();
+        $calls = 0;
+        $this->mock(\App\Services\DemoData\AuditLogDataService::class, function ($mock) use (&$calls): void {
+            $mock->shouldReceive('record')->andReturnUsing(function () use (&$calls): void {
+                $calls++;
+                if ($calls === 2) throw new \RuntimeException('Forced audit failure.');
+            });
+        });
+
+        $this->withSession($this->demoSession())->postJson("/expenses/{$number}/approve")
+            ->assertStatus(409)->assertJsonPath('message', 'Forced audit failure.');
+        foreach ($before as $name => $contents) $this->assertSame($contents, file_get_contents($this->paths[$name]), $name.' was not rolled back.');
     }
 
     public function test_validation_roles_and_csv_export_are_enforced(): void

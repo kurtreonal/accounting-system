@@ -6,6 +6,7 @@ use App\Services\Accounting\AccountingPostingService;
 use App\Services\DemoAccessService;
 use App\Services\DemoData\AccountDataService;
 use App\Services\DemoData\AuditLogDataService;
+use App\Services\DemoData\ExpenseDataService;
 use App\Services\DemoData\PurchaseDataService;
 use App\Services\DemoData\TaxCodeDataService;
 use App\Services\Exports\AccountingPdfExportService;
@@ -21,7 +22,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AccountsPayableController extends Controller
 {
-    public function index(Request $request, PurchaseDataService $purchases, AccountDataService $accounts, TaxCodeDataService $taxCodes, DemoAccessService $access): View|RedirectResponse
+    public function index(Request $request, PurchaseDataService $purchases, ExpenseDataService $expenses, AccountDataService $accounts, TaxCodeDataService $taxCodes, DemoAccessService $access): View|RedirectResponse
     {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
@@ -30,6 +31,17 @@ class AccountsPayableController extends Controller
         $vendors = $purchases->vendors();
         $bills = $purchases->bills();
         $payments = $purchases->payments();
+        $expensePayables = collect($expenses->all())->filter(
+            static fn (array $expense): bool => ($expense['status'] ?? '') === 'Approved' && ($expense['payment_status'] ?? '') === 'Unpaid'
+        )->map(static fn (array $expense): array => [
+            'expense_number' => $expense['expense_number'],
+            'payee' => $expense['payee'],
+            'expense_date' => $expense['date'],
+            'due_date' => $expense['due_date'],
+            'amount' => (float) $expense['total'],
+            'journal_entry_id' => $expense['journal_entry_id'] ?? null,
+            'status' => 'Unpaid',
+        ])->values()->all();
         if ($access->isViewer($request)) {
             $bills = array_values(array_filter($bills, static fn (array $bill): bool => $bill['status'] !== 'Draft'));
             $payments = array_values(array_filter($payments, static fn (array $payment): bool => $payment['status'] === 'Posted'));
@@ -39,19 +51,23 @@ class AccountsPayableController extends Controller
             static fn (array $bill): bool => $bill['status'] !== 'Draft' && (float) $bill['remaining_balance'] > 0
         );
         $activeAccounts = collect($accounts->all(['status' => 'Active']));
+        $expensePayableTotal = (float) collect($expensePayables)->sum('amount');
+        $expensePayableOverdue = (float) collect($expensePayables)->filter(static fn (array $row): bool => $row['due_date'] < $today)->sum('amount');
 
         return view('accounts-payable', [
             'user' => $request->session()->get('demo_user'),
             'vendors' => $vendors,
             'bills' => $bills,
             'payments' => $payments,
+            'expensePayables' => $expensePayables,
             'cashAccounts' => $activeAccounts->filter(fn (array $account): bool => $this->isCashOrBank($account))->values()->all(),
             'purchaseAccounts' => $activeAccounts->filter(fn (array $account): bool => $this->isPurchaseAccount($account))->values()->all(),
             'postingAccounts' => $activeAccounts->values()->all(),
             'metrics' => [
-                'payable' => round((float) $openBills->sum('remaining_balance'), 2),
-                'overdue' => round((float) $openBills->filter(static fn (array $bill): bool => $bill['due_date'] < $today)->sum('remaining_balance'), 2),
+                'payable' => round((float) $openBills->sum('remaining_balance') + $expensePayableTotal, 2),
+                'overdue' => round((float) $openBills->filter(static fn (array $bill): bool => $bill['due_date'] < $today)->sum('remaining_balance') + $expensePayableOverdue, 2),
                 'bill_count' => count($bills),
+                'expense_payable_count' => count($expensePayables),
                 'paid_count' => collect($bills)->where('display_status', 'Paid')->count(),
                 'vendor_count' => count($vendors),
                 'active_vendor_count' => collect($vendors)->where('status', 'Active')->count(),
@@ -299,20 +315,20 @@ class AccountsPayableController extends Controller
         return response()->json(['message' => 'Vendor payment posted.', 'payment' => $payment, 'journal' => $journal]);
     }
 
-    public function csv(Request $request, PurchaseDataService $purchases): StreamedResponse|RedirectResponse
+    public function csv(Request $request, PurchaseDataService $purchases, ExpenseDataService $expenses): StreamedResponse|RedirectResponse
     {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
         }
 
-        $bills = $this->filteredBills($request, $purchases);
+        $bills = [...$this->filteredBills($request, $purchases), ...$this->filteredExpensePayables($request, $expenses)];
 
         return response()->streamDownload(function () use ($bills): void {
             $output = fopen('php://output', 'wb');
-            fputcsv($output, ['Bill Number', 'Reference', 'Bill Date', 'Due Date', 'Vendor', 'Amount', 'Paid', 'Balance', 'Status']);
+            fputcsv($output, ['Document Number', 'Source', 'Reference', 'Document Date', 'Due Date', 'Payee', 'Amount', 'Paid', 'Balance', 'Status']);
             foreach ($bills as $bill) {
                 fputcsv($output, [
-                    $this->csvCell($bill['bill_number']), $this->csvCell($bill['reference']), $bill['bill_date'], $bill['due_date'],
+                    $this->csvCell($bill['bill_number']), $bill['source'] ?? 'Vendor Bill', $this->csvCell($bill['reference']), $bill['bill_date'], $bill['due_date'],
                     $this->csvCell($bill['vendor_name']), number_format((float) $bill['total'], 2, '.', ''),
                     number_format((float) $bill['amount_paid'], 2, '.', ''), number_format((float) $bill['remaining_balance'], 2, '.', ''),
                     $bill['display_status'],
@@ -325,6 +341,7 @@ class AccountsPayableController extends Controller
     public function pdf(
         Request $request,
         PurchaseDataService $purchases,
+        ExpenseDataService $expenses,
         AccountingPdfExportService $exports,
     ): Response|RedirectResponse {
         if (! $request->session()->has('demo_user')) {
@@ -335,7 +352,7 @@ class AccountsPayableController extends Controller
             'search' => trim((string) $request->query('search', '')),
             'status' => trim((string) $request->query('status', '')),
         ];
-        $content = $exports->accountsPayable($this->filteredBills($request, $purchases), $filters, now());
+        $content = $exports->accountsPayable([...$this->filteredBills($request, $purchases), ...$this->filteredExpensePayables($request, $expenses)], $filters, now());
 
         return response($content, 200, [
             'Content-Type' => 'application/pdf',
@@ -359,6 +376,25 @@ class AccountsPayableController extends Controller
                 && ($search === '' || str_contains($haystack, $search))
                 && ($status === '' || $bill['display_status'] === $status);
         }));
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function filteredExpensePayables(Request $request, ExpenseDataService $expenses): array
+    {
+        $search = Str::lower(trim((string) $request->query('search', '')));
+        $status = trim((string) $request->query('status', ''));
+
+        return collect($expenses->all())->filter(static function (array $expense) use ($search, $status): bool {
+            $isOpen = ($expense['status'] ?? '') === 'Approved' && ($expense['payment_status'] ?? '') === 'Unpaid';
+            $haystack = Str::lower(implode(' ', [$expense['expense_number'], $expense['payee'], $expense['memo']]));
+            $display = ($expense['due_date'] ?? '9999-12-31') < now()->toDateString() ? 'Overdue' : 'Unpaid';
+            return $isOpen && ($search === '' || str_contains($haystack, $search)) && ($status === '' || $status === $display);
+        })->map(static fn (array $expense): array => [
+            'bill_number' => $expense['expense_number'], 'source' => 'Expense', 'reference' => $expense['expense_number'],
+            'bill_date' => $expense['date'], 'due_date' => $expense['due_date'], 'vendor_name' => $expense['payee'],
+            'total' => (float) $expense['total'], 'amount_paid' => 0.0, 'remaining_balance' => (float) $expense['total'],
+            'display_status' => $expense['due_date'] < now()->toDateString() ? 'Overdue' : 'Unpaid',
+        ])->values()->all();
     }
 
     /** @return array<string, mixed>|JsonResponse */

@@ -112,7 +112,7 @@
                                 @forelse ($report['rows'] as $row)
                                     <tr class="apm-table-row">
                                         <td class="font-mono text-[11px]">{{ $row['date'] }}</td>
-                                        <td><a href="{{ route('journal-entries', ['entry' => $row['journal_number']]) }}" class="font-mono text-blue-600 hover:underline">{{ $row['journal_number'] }}</a></td>
+                                        <td><button type="button" data-record-detail data-record-resource="journal_entry" data-record-id="{{ $row['journal_number'] }}" class="font-mono text-blue-600 hover:underline">{{ $row['journal_number'] }}</button></td>
                                         <td><span class="font-medium">{{ $row['line_description'] ?: $row['description'] }}</span>@if($row['reference'])<span class="mt-0.5 block text-[10px] text-slate-400">{{ $row['reference'] }}</span>@endif</td>
                                         <td class="apm-money text-right">{{ $row['debit'] > 0 ? 'PHP '.number_format($row['debit'], 2) : '—' }}</td>
                                         <td class="apm-money text-right">{{ $row['credit'] > 0 ? 'PHP '.number_format($row['credit'], 2) : '—' }}</td>

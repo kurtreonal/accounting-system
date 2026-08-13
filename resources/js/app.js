@@ -7,6 +7,8 @@ import './accounts-receivable';
 import './accounts-payable';
 import './cash-bank';
 import './expenses';
+import './financial-reports';
+import './tax-settings';
 
 const setupSidebarToggle = () => {
     const button = document.querySelector('#sidebar-toggle');

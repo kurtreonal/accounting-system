@@ -48,7 +48,7 @@ class ChartOfAccountsManagementTest extends TestCase
             'name' => 'New Demo Account',
             'type' => 'Expense',
             'sub_type' => 'Operating Expense',
-            'balance' => 125.50,
+            'balance' => 0,
             'status' => 'Active',
         ])->assertCreated()->json('account');
 
@@ -57,8 +57,9 @@ class ChartOfAccountsManagementTest extends TestCase
             'name' => 'Updated Demo Account',
             'type' => 'Expense',
             'sub_type' => 'Other Expense',
-            'balance' => 200,
         ])->assertOk()->assertJsonPath('account.name', 'Updated Demo Account');
+        $updatedAccount = collect($this->withSession($session)->get('/chart-of-accounts')->viewData('accountDataset'))->firstWhere('code', '1');
+        $this->assertSame(0.0, (float) $updatedAccount['balance']);
 
         $this->withSession($session)->patchJson('/chart-of-accounts/1/status', ['status' => 'Inactive'])
             ->assertOk()->assertJsonPath('account.status', 'Inactive');

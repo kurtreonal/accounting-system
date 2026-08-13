@@ -15,7 +15,7 @@ class AccountsPayableTest extends TestCase
         parent::setUp();
 
         $suffix = uniqid('', true);
-        foreach (['accounts', 'journals', 'audit', 'vendors', 'bills', 'payments'] as $resource) {
+        foreach (['accounts', 'journals', 'audit', 'vendors', 'bills', 'payments', 'tax_codes'] as $resource) {
             $this->paths[$resource] = storage_path("framework/testing/ap-{$resource}-{$suffix}.json");
             file_put_contents($this->paths[$resource], '[]');
         }
@@ -40,6 +40,7 @@ class AccountsPayableTest extends TestCase
             'opening_balance' => 0,
             'status' => 'Active',
         ]], JSON_THROW_ON_ERROR));
+        file_put_contents($this->paths['tax_codes'], json_encode($this->vatRates(), JSON_THROW_ON_ERROR));
 
         config()->set('accounting.accounts_path', $this->paths['accounts']);
         config()->set('accounting.journal_entries_path', $this->paths['journals']);
@@ -47,6 +48,7 @@ class AccountsPayableTest extends TestCase
         config()->set('accounting.vendors_path', $this->paths['vendors']);
         config()->set('accounting.bills_path', $this->paths['bills']);
         config()->set('accounting.vendor_payments_path', $this->paths['payments']);
+        config()->set('accounting.tax_codes_path', $this->paths['tax_codes']);
     }
 
     protected function tearDown(): void
@@ -280,6 +282,11 @@ class AccountsPayableTest extends TestCase
     private function account(string $code, string $name, string $type, string $subType, float $balance): array
     {
         return ['code' => $code, 'name' => $name, 'type' => $type, 'sub_type' => $subType, 'balance' => $balance, 'status' => 'Active'];
+    }
+
+    private function vatRates(): array
+    {
+        return [['id' => 1, 'code' => 'VAT-STD', 'name' => 'Standard VAT', 'rate' => 12, 'type' => 'VAT', 'applies_to' => 'Goods & Services', 'is_default' => true, 'status' => 'Active'], ['id' => 2, 'code' => 'VAT-ZERO', 'name' => 'Zero VAT', 'rate' => 0, 'type' => 'VAT', 'applies_to' => 'Exempt', 'is_default' => false, 'status' => 'Active']];
     }
 
     /** @return array{demo_user: array{id: int, name: string, email: string, role: string}} */

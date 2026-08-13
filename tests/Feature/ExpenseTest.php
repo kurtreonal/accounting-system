@@ -13,7 +13,7 @@ class ExpenseTest extends TestCase
     {
         parent::setUp();
         $suffix = uniqid('', true);
-        foreach (['accounts', 'journals', 'audit', 'expenses', 'transactions'] as $name) {
+        foreach (['accounts', 'journals', 'audit', 'expenses', 'transactions', 'tax_codes'] as $name) {
             $this->paths[$name] = storage_path("framework/testing/expense-{$name}-{$suffix}.json");
             file_put_contents($this->paths[$name], '[]');
         }
@@ -23,11 +23,13 @@ class ExpenseTest extends TestCase
             $this->account('5100', 'Office Supplies Expense', 'Expense', 'Operating Expense', 0),
             $this->account('1200', 'Input Tax Receivable', 'Asset', 'Current Asset', 0),
         ], JSON_THROW_ON_ERROR));
+        file_put_contents($this->paths['tax_codes'], json_encode($this->vatRates(), JSON_THROW_ON_ERROR));
         config()->set('accounting.accounts_path', $this->paths['accounts']);
         config()->set('accounting.journal_entries_path', $this->paths['journals']);
         config()->set('accounting.audit_logs_path', $this->paths['audit']);
         config()->set('accounting.expenses_path', $this->paths['expenses']);
         config()->set('accounting.bank_transactions_path', $this->paths['transactions']);
+        config()->set('accounting.tax_codes_path', $this->paths['tax_codes']);
     }
 
     protected function tearDown(): void
@@ -88,6 +90,7 @@ class ExpenseTest extends TestCase
     {
         $this->withSession($this->demoSession('Viewer / Auditor'))->postJson('/expenses', $this->payload())->assertForbidden();
         $this->withSession($this->demoSession())->postJson('/expenses', [...$this->payload(), 'amount' => -1])->assertUnprocessable();
+        $this->withSession($this->demoSession())->postJson('/expenses', [...$this->payload(), 'request_token' => (string) Str::uuid(), 'tax_rate' => 7])->assertUnprocessable();
         $this->withSession($this->demoSession())->get('/expenses/export/csv')->assertOk()->assertHeader('content-type', 'text/csv; charset=UTF-8');
     }
 
@@ -99,6 +102,11 @@ class ExpenseTest extends TestCase
     private function account(string $code, string $name, string $type, string $subType, float $balance): array
     {
         return compact('code', 'name', 'type', 'balance') + ['sub_type' => $subType, 'status' => 'Active'];
+    }
+
+    private function vatRates(): array
+    {
+        return [['id' => 1, 'code' => 'VAT-STD', 'name' => 'Standard VAT', 'rate' => 12, 'type' => 'VAT', 'applies_to' => 'Goods & Services', 'is_default' => true, 'status' => 'Active'], ['id' => 2, 'code' => 'VAT-ZERO', 'name' => 'Zero VAT', 'rate' => 0, 'type' => 'VAT', 'applies_to' => 'Exempt', 'is_default' => false, 'status' => 'Active']];
     }
 
     private function demoSession(string $role = 'Administrator'): array

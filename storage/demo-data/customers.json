@@ -2,16 +2,16 @@
     {
         "id": 1,
         "code": "CUST-001",
-        "name": "DEMO BUSINESS",
+        "name": "BUSINESS TEST",
         "contact_person": "JCRUZ",
-        "email": "jcrus@gmail.com",
+        "email": "jcruz@gmail.com",
         "phone": "09123456789",
-        "billing_address": null,
-        "tax_id": "DEMO-C001",
+        "billing_address": "Makati City, Metro Manila",
+        "tax_id": "TIN-C001",
         "credit_terms_days": "30",
         "opening_balance": "0",
         "status": "Active",
-        "created_at": "2026-08-12T13:41:06+00:00",
-        "updated_at": "2026-08-12T13:41:06+00:00"
+        "created_at": "2026-08-13T03:27:39+00:00",
+        "updated_at": "2026-08-13T03:27:39+00:00"
     }
 ]

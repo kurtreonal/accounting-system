@@ -4,11 +4,11 @@
         "invoice_number": "INV-2026-0001",
         "customer_id": 1,
         "customer_code": "CUST-001",
-        "customer_name": "DEMO BUSINESS",
-        "invoice_date": "2026-08-12",
-        "due_date": "2026-09-11",
-        "reference": "PO-DEMO-1001",
-        "memo": "TEST",
+        "customer_name": "BUSINESS TEST",
+        "invoice_date": "2026-08-13",
+        "due_date": "2026-09-12",
+        "reference": "PO-DEMO-001",
+        "memo": "credit sale test",
         "lines": [
             {
                 "id": 1,
@@ -32,9 +32,9 @@
         "status": "Posted",
         "amount_paid": 0,
         "journal_entry_id": "JE-2026-0001",
-        "posted_at": "2026-08-12T13:43:30+00:00",
-        "created_at": "2026-08-12T13:42:54+00:00",
-        "updated_at": "2026-08-12T13:43:30+00:00",
+        "posted_at": "2026-08-13T03:31:12+00:00",
+        "created_at": "2026-08-13T03:31:00+00:00",
+        "updated_at": "2026-08-13T03:31:12+00:00",
         "posted_by": {
             "id": 1,
             "name": "Matavia"

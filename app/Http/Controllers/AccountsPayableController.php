@@ -6,6 +6,7 @@ use App\Services\Accounting\AccountingPostingService;
 use App\Services\DemoData\AccountDataService;
 use App\Services\DemoData\AuditLogDataService;
 use App\Services\DemoData\PurchaseDataService;
+use App\Services\DemoData\TaxCodeDataService;
 use App\Services\Exports\AccountingPdfExportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -19,7 +20,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AccountsPayableController extends Controller
 {
-    public function index(Request $request, PurchaseDataService $purchases, AccountDataService $accounts): View|RedirectResponse
+    public function index(Request $request, PurchaseDataService $purchases, AccountDataService $accounts, TaxCodeDataService $taxCodes): View|RedirectResponse
     {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
@@ -50,6 +51,7 @@ class AccountsPayableController extends Controller
                 'active_vendor_count' => collect($vendors)->where('status', 'Active')->count(),
             ],
             'vendorBalances' => $this->vendorBalances($vendors, $bills),
+            'vatRates' => $taxCodes->activeVatRates(),
         ]);
     }
 
@@ -120,13 +122,14 @@ class AccountsPayableController extends Controller
         Request $request,
         PurchaseDataService $purchases,
         AccountDataService $accounts,
+        TaxCodeDataService $taxCodes,
         AuditLogDataService $auditLogs,
     ): JsonResponse {
         if ($response = $this->denyMutation($request)) {
             return $response;
         }
 
-        $prepared = $this->prepareBill($request, $purchases, $accounts);
+        $prepared = $this->prepareBill($request, $purchases, $accounts, $taxCodes);
         if ($prepared instanceof JsonResponse) {
             return $prepared;
         }
@@ -146,13 +149,14 @@ class AccountsPayableController extends Controller
         string $billNumber,
         PurchaseDataService $purchases,
         AccountDataService $accounts,
+        TaxCodeDataService $taxCodes,
         AuditLogDataService $auditLogs,
     ): JsonResponse {
         if ($response = $this->denyMutation($request)) {
             return $response;
         }
 
-        $prepared = $this->prepareBill($request, $purchases, $accounts);
+        $prepared = $this->prepareBill($request, $purchases, $accounts, $taxCodes);
         if ($prepared instanceof JsonResponse) {
             return $prepared;
         }
@@ -392,7 +396,7 @@ class AccountsPayableController extends Controller
     }
 
     /** @return array<string, mixed>|JsonResponse */
-    private function prepareBill(Request $request, PurchaseDataService $purchases, AccountDataService $accounts): array|JsonResponse
+    private function prepareBill(Request $request, PurchaseDataService $purchases, AccountDataService $accounts, TaxCodeDataService $taxCodes): array|JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'vendor_id' => ['required', 'integer'],
@@ -416,6 +420,11 @@ class AccountsPayableController extends Controller
         }
 
         $validated = $validator->validated();
+        foreach ($validated['lines'] as $index => $line) {
+            if (! collect($taxCodes->activeVatRates())->contains(fn (array $code): bool => abs((float) $code['rate'] - (float) $line['tax_rate']) < 0.005)) {
+                return $this->validationError(["lines.{$index}.tax_rate" => ['Select an active configured VAT rate.']], 'Please correct vendor bill fields.');
+            }
+        }
         $vendor = collect($purchases->vendors())->first(
             fn (array $item): bool => (int) $item['id'] === (int) $validated['vendor_id'] && $item['status'] === 'Active'
         );

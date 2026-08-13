@@ -2,16 +2,16 @@
     {
         "id": 1,
         "code": "VEN-001",
-        "name": "VEN UTILITIES",
-        "contact_person": "BEN",
+        "name": "VEN Utilities",
+        "contact_person": "ben",
         "email": "ben@gmail.com",
-        "phone": "0917-000-0002",
-        "address": "Taguig City, Metro Manila",
+        "phone": "09123456788",
+        "address": null,
         "tax_id": "TIN-V001",
         "payment_terms_days": "30",
         "opening_balance": "0",
         "status": "Active",
-        "created_at": "2026-08-12T13:54:30+00:00",
-        "updated_at": "2026-08-12T13:55:53+00:00"
+        "created_at": "2026-08-13T03:28:28+00:00",
+        "updated_at": "2026-08-13T03:29:05+00:00"
     }
 ]

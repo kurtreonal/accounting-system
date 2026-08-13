@@ -170,7 +170,7 @@
         <td class="px-4 py-2"><input data-line="description" maxlength="180" class="h-9 w-full rounded-lg border border-slate-200 px-3 text-xs outline-none focus:border-blue-400 focus:ring-3 focus:ring-blue-100"></td>
         <td class="px-3 py-2"><input data-line="quantity" type="number" min="0.01" step="0.01" value="1" class="h-9 w-full rounded-lg border border-slate-200 px-2 text-xs outline-none focus:border-blue-400"></td>
         <td class="px-3 py-2"><input data-line="unit_price" type="number" min="0" step="0.01" value="0" class="h-9 w-full rounded-lg border border-slate-200 px-2 text-xs outline-none focus:border-blue-400"></td>
-        <td class="px-3 py-2"><input data-line="tax_rate" type="number" min="0" max="100" step="0.01" value="0" class="h-9 w-full rounded-lg border border-slate-200 px-2 text-xs outline-none focus:border-blue-400"></td>
+        <td class="px-3 py-2"><select data-line="tax_rate" class="h-9 w-full rounded-lg border border-slate-200 px-2 text-xs outline-none focus:border-blue-400">@forelse($vatRates as $taxCode)<option value="{{ $taxCode['rate'] }}" @selected($taxCode['is_default'])>{{ number_format($taxCode['rate'], 2) }}%</option>@empty<option value="0">0.00%</option>@endforelse</select></td>
         <td data-line-total class="px-3 py-2 text-right font-mono font-medium">₱0.00</td>
         <td class="px-2 py-2"><button type="button" data-remove-line class="grid size-8 place-items-center rounded-lg bg-red-50 text-red-600 transition hover:bg-red-100 active:scale-90" aria-label="Remove line"><i class="fa-solid fa-trash-can"></i></button></td>
     </tr>

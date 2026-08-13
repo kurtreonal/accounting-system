@@ -45,11 +45,45 @@ class CashBankDataService
         });
     }
 
-    /** @param array<int, int> $transactionIds
+    /** @return array<string, mixed> */
+    public function findTransaction(string $identifier): array
+    {
+        foreach ($this->transactions() as $row) {
+            if ((string) ($row['id'] ?? '') === $identifier
+                || (string) ($row['transaction_number'] ?? '') === $identifier
+                || 'transaction:'.(string) ($row['id'] ?? '') === $identifier) {
+                return $row;
+            }
+        }
+
+        throw new RuntimeException('The cash or bank transaction could not be found.');
+    }
+
+    /** @return array<string, mixed> */
+    public function markReversed(int $id, string $reversalJournal, string $reversalTransaction): array
+    {
+        return $this->mutate($this->transactionsPath(), function (array &$rows) use ($id, $reversalJournal, $reversalTransaction): array {
+            foreach ($rows as &$row) {
+                if ((int) ($row['id'] ?? 0) !== $id) continue;
+                if (($row['cleared'] ?? false) || ($row['reversed_at'] ?? null)) {
+                    throw new RuntimeException('Cleared or already reversed transactions cannot be reversed.');
+                }
+                $row['reversed_at'] = now()->toIso8601String();
+                $row['reversal_journal_entry_id'] = $reversalJournal;
+                $row['reversal_transaction_number'] = $reversalTransaction;
+                return $row;
+            }
+            unset($row);
+
+            throw new RuntimeException('The cash or bank transaction could not be found.');
+        });
+    }
+
+    /** @param array<int, string> $movementIds
      * @param array<string, mixed> $attributes
      * @return array<string, mixed>
      */
-    public function reconcile(string $accountCode, array $transactionIds, array $attributes): array
+    public function reconcile(string $accountCode, array $movementIds, array $attributes): array
     {
         $transactionsPath = $this->transactionsPath();
         $reconciliationsPath = $this->reconciliationsPath();
@@ -61,14 +95,22 @@ class CashBankDataService
             $reconciliations = $this->decodeStream($reconciliationHandle);
             $eligibleIds = collect($transactions)
                 ->filter(fn (array $row): bool => $this->touchesAccount($row, $accountCode) && ! ($row['cleared'] ?? false))
-                ->pluck('id')->map(fn ($id): int => (int) $id)->all();
-            if (array_diff($transactionIds, $eligibleIds) !== []) {
+                ->pluck('id')->map(fn ($id): string => 'transaction:'.(string) $id)->all();
+            $storedMovementIds = array_values(array_filter($movementIds, fn (string $id): bool => str_starts_with($id, 'transaction:')));
+            if (array_diff($storedMovementIds, $eligibleIds) !== []) {
                 throw new RuntimeException('One or more selected transactions cannot be reconciled.');
+            }
+            $alreadyReconciled = collect($reconciliations)->flatMap(function (array $row): array {
+                if (isset($row['movement_ids'])) return array_map('strval', (array) $row['movement_ids']);
+                return array_map(fn ($id): string => 'transaction:'.$id, (array) ($row['transaction_ids'] ?? []));
+            })->all();
+            if (array_intersect($movementIds, $alreadyReconciled) !== []) {
+                throw new RuntimeException('One or more selected transactions were already reconciled.');
             }
 
             $id = (int) collect($reconciliations)->max('id') + 1;
             foreach ($transactions as &$transaction) {
-                if (in_array((int) $transaction['id'], $transactionIds, true)) {
+                if (in_array('transaction:'.(string) $transaction['id'], $movementIds, true)) {
                     $transaction['cleared'] = true;
                     $transaction['reconciliation_id'] = $id;
                 }
@@ -79,7 +121,11 @@ class CashBankDataService
                 'id' => $id,
                 'reference' => sprintf('REC-%s-%04d', now()->format('Y'), $id),
                 'account_code' => $accountCode,
-                'transaction_ids' => $transactionIds,
+                'movement_ids' => $movementIds,
+                'transaction_ids' => array_map(
+                    fn (string $movementId): int => (int) substr($movementId, strlen('transaction:')),
+                    $storedMovementIds,
+                ),
                 'created_at' => now()->toIso8601String(),
                 ...$attributes,
             ];

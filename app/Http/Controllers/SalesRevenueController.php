@@ -6,6 +6,7 @@ use App\Services\Accounting\AccountingPostingService;
 use App\Services\DemoData\AccountDataService;
 use App\Services\DemoData\AuditLogDataService;
 use App\Services\DemoData\SalesDataService;
+use App\Services\DemoData\TaxCodeDataService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,7 @@ use RuntimeException;
 
 class SalesRevenueController extends Controller
 {
-    public function index(Request $request, SalesDataService $sales, AccountDataService $accounts): View|RedirectResponse
+    public function index(Request $request, SalesDataService $sales, AccountDataService $accounts, TaxCodeDataService $taxCodes): View|RedirectResponse
     {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
@@ -58,6 +59,7 @@ class SalesRevenueController extends Controller
             'revenueByCustomer' => $revenueByCustomer,
             'customerRevenueMax' => max([0, ...array_column($revenueByCustomer, 'total')]),
             'postingAccounts' => $accounts->all(['status' => 'Active']),
+            'vatRates' => $taxCodes->activeVatRates(),
         ]);
     }
 
@@ -97,7 +99,7 @@ class SalesRevenueController extends Controller
         return response()->json(['message' => 'Customer created.', 'customer' => $customer], 201);
     }
 
-    public function storeInvoice(Request $request, SalesDataService $sales, AuditLogDataService $auditLogs): JsonResponse
+    public function storeInvoice(Request $request, SalesDataService $sales, TaxCodeDataService $taxCodes, AuditLogDataService $auditLogs): JsonResponse
     {
         if ($response = $this->denyMutation($request)) {
             return $response;
@@ -120,6 +122,11 @@ class SalesRevenueController extends Controller
         }
 
         $validated = $validator->validated();
+        foreach ($validated['lines'] as $index => $line) {
+            if (! collect($taxCodes->activeVatRates())->contains(fn (array $code): bool => abs((float) $code['rate'] - (float) $line['tax_rate']) < 0.005)) {
+                return $this->validationError(["lines.{$index}.tax_rate" => ['Select an active configured VAT rate.']], 'Please correct the invoice fields.');
+            }
+        }
         $customer = collect($sales->customers())->first(
             fn (array $item): bool => (int) $item['id'] === (int) $validated['customer_id'] && $item['status'] === 'Active'
         );

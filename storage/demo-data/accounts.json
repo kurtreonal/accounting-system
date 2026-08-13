@@ -29,7 +29,7 @@
         "type": "Equity",
         "sub_type": "Owner Equity",
         "balance": 0,
-        "status": "Active"
+        "status": "Inactive"
     },
     {
         "code": "5",

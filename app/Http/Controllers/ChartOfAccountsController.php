@@ -17,14 +17,14 @@ class ChartOfAccountsController extends Controller
             return $response;
         }
 
-        $validator = Validator::make($request->all(), $this->accountRules(includeStatus: true));
+        $validator = Validator::make($request->all(), $this->accountRules(includeStatus: true, includeOpeningBalance: true));
 
         if ($validator->fails()) {
             return $this->validationError($validator->errors()->toArray());
         }
 
         try {
-            $account = $accounts->create($this->normalized($validator->validated(), includeStatus: true));
+            $account = $accounts->create($this->normalized($validator->validated(), includeStatus: true, includeOpeningBalance: true));
         } catch (RuntimeException $exception) {
             return $this->persistenceError($exception);
         }
@@ -38,14 +38,14 @@ class ChartOfAccountsController extends Controller
             return $response;
         }
 
-        $validator = Validator::make($request->all(), $this->accountRules(includeStatus: false));
+        $validator = Validator::make($request->all(), $this->accountRules(includeStatus: false, includeOpeningBalance: false));
 
         if ($validator->fails()) {
             return $this->validationError($validator->errors()->toArray());
         }
 
         try {
-            $account = $accounts->update($code, $this->normalized($validator->validated(), includeStatus: false));
+            $account = $accounts->update($code, $this->normalized($validator->validated(), includeStatus: false, includeOpeningBalance: false));
         } catch (RuntimeException $exception) {
             return $this->persistenceError($exception);
         }
@@ -92,14 +92,17 @@ class ChartOfAccountsController extends Controller
     }
 
     /** @return array<string, array<int, mixed>> */
-    private function accountRules(bool $includeStatus): array
+    private function accountRules(bool $includeStatus, bool $includeOpeningBalance): array
     {
         $rules = [
             'name' => ['required', 'string', 'max:100'],
             'type' => ['required', Rule::in(['Asset', 'Liability', 'Equity', 'Revenue', 'Expense'])],
             'sub_type' => ['nullable', 'string', 'max:100'],
-            'balance' => ['required', 'numeric'],
         ];
+
+        if ($includeOpeningBalance) {
+            $rules['balance'] = ['nullable', 'numeric', 'between:0,0'];
+        }
 
         if ($includeStatus) {
             $rules['status'] = ['required', Rule::in(['Active', 'Inactive'])];
@@ -112,14 +115,17 @@ class ChartOfAccountsController extends Controller
      * @param  array<string, mixed>  $validated
      * @return array<string, mixed>
      */
-    private function normalized(array $validated, bool $includeStatus): array
+    private function normalized(array $validated, bool $includeStatus, bool $includeOpeningBalance): array
     {
         $account = [
             'name' => trim($validated['name']),
             'type' => $validated['type'],
             'sub_type' => trim((string) ($validated['sub_type'] ?? '')),
-            'balance' => round((float) $validated['balance'], 2),
         ];
+
+        if ($includeOpeningBalance) {
+            $account['balance'] = 0;
+        }
 
         if ($includeStatus) {
             $account['status'] = $validated['status'];

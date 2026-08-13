@@ -7,6 +7,7 @@ use App\Services\DemoData\AccountDataService;
 use App\Services\DemoData\AuditLogDataService;
 use App\Services\DemoData\CashBankDataService;
 use App\Services\DemoData\ExpenseDataService;
+use App\Services\DemoData\TaxCodeDataService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,7 +19,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExpenseController extends Controller
 {
-    public function index(Request $request, ExpenseDataService $expenses, AccountDataService $accounts): View|RedirectResponse
+    public function index(Request $request, ExpenseDataService $expenses, AccountDataService $accounts, TaxCodeDataService $taxCodes): View|RedirectResponse
     {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
@@ -31,6 +32,7 @@ class ExpenseController extends Controller
             'expenses' => $records,
             'expenseAccounts' => $active->where('type', 'Expense')->values()->all(),
             'cashAccounts' => $active->filter(fn (array $account): bool => $this->isCashOrBank($account))->values()->all(),
+            'vatRates' => $taxCodes->activeVatRates(),
             'metrics' => [
                 'total' => round((float) collect($records)->sum('total'), 2),
                 'approved' => round((float) collect($records)->where('status', 'Approved')->sum('total'), 2),
@@ -41,7 +43,7 @@ class ExpenseController extends Controller
         ]);
     }
 
-    public function store(Request $request, ExpenseDataService $expenses, AccountDataService $accounts, AuditLogDataService $auditLogs): JsonResponse
+    public function store(Request $request, ExpenseDataService $expenses, AccountDataService $accounts, TaxCodeDataService $taxCodes, AuditLogDataService $auditLogs): JsonResponse
     {
         if ($response = $this->denyMutation($request)) {
             return $response;
@@ -51,6 +53,9 @@ class ExpenseController extends Controller
             return $this->validationError($validator->errors()->toArray());
         }
         $data = $validator->validated();
+        if (! $this->isActiveVatRate((float) $data['tax_rate'], $taxCodes)) {
+            return $this->validationError(['tax_rate' => ['Select an active configured VAT rate.']]);
+        }
         if ($response = $this->validateAccounts($data, $accounts)) {
             return $response;
         }
@@ -69,7 +74,7 @@ class ExpenseController extends Controller
         return response()->json(['message' => $data['action'] === 'review' ? 'Expense submitted for review.' : 'Expense draft saved.', 'expense' => $expense], 201);
     }
 
-    public function update(Request $request, string $expenseNumber, ExpenseDataService $expenses, AccountDataService $accounts, AuditLogDataService $auditLogs): JsonResponse
+    public function update(Request $request, string $expenseNumber, ExpenseDataService $expenses, AccountDataService $accounts, TaxCodeDataService $taxCodes, AuditLogDataService $auditLogs): JsonResponse
     {
         if ($response = $this->denyMutation($request)) {
             return $response;
@@ -79,6 +84,9 @@ class ExpenseController extends Controller
             return $this->validationError($validator->errors()->toArray());
         }
         $data = $validator->validated();
+        if (! $this->isActiveVatRate((float) $data['tax_rate'], $taxCodes)) {
+            return $this->validationError(['tax_rate' => ['Select an active configured VAT rate.']]);
+        }
         if ($response = $this->validateAccounts($data, $accounts)) {
             return $response;
         }
@@ -245,6 +253,11 @@ class ExpenseController extends Controller
         $text = Str::lower($account['name'].' '.($account['sub_type'] ?? ''));
 
         return $account['type'] === 'Asset' && (str_contains($text, 'cash') || str_contains($text, 'bank'));
+    }
+
+    private function isActiveVatRate(float $rate, TaxCodeDataService $taxCodes): bool
+    {
+        return collect($taxCodes->activeVatRates())->contains(fn (array $code): bool => abs((float) $code['rate'] - $rate) < 0.005);
     }
 
     private function denyMutation(Request $request): ?JsonResponse

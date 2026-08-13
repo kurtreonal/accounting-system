@@ -195,7 +195,7 @@ class AccountingPostingService
             if (! $this->isCashOrBank($cash) || $cash['code'] === $offset['code']) {
                 throw new RuntimeException('Select a valid cash account and a different offset account.');
             }
-            $inflow = in_array($type, ['deposit', 'interest'], true);
+            $inflow = in_array($type, ['deposit', 'interest', 'adjustment_increase'], true);
             $lines = $inflow
                 ? [$this->line($cash, $description, '', $amount, 0), $this->line($offset, $description, '', 0, $amount)]
                 : [$this->line($offset, $description, '', $amount, 0), $this->line($cash, $description, '', 0, $amount)];
@@ -207,7 +207,9 @@ class AccountingPostingService
                 'date' => $transaction['date'],
                 'reference' => $reference,
                 'description' => $description,
-                'source_type' => $type === 'transfer' ? 'Bank Transfer' : 'Cash/Bank',
+                'source_type' => $type === 'transfer'
+                    ? 'Bank Transfer'
+                    : (str_starts_with($type, 'adjustment_') ? 'Cash Adjustment' : 'Cash/Bank'),
                 'lines' => $lines,
             ],
             $actor,
@@ -298,6 +300,26 @@ class AccountingPostingService
             'reversal_entry_number' => $result['reversal']['journal_number'],
             'posting_engine' => self::ENGINE_VERSION,
         ]);
+
+        return $result;
+    }
+
+    /** @param array<string, mixed> $actor
+     * @return array{entry: array<string, mixed>, reversal: array<string, mixed>}
+     */
+    public function reverseCashBank(string $journalNumber, array $actor): array
+    {
+        $entry = $this->journals->find($journalNumber);
+        if (! in_array((string) ($entry['source_type'] ?? ''), ['Cash/Bank', 'Bank Transfer', 'Cash Adjustment'], true)) {
+            throw new RuntimeException('This transaction must be reversed from its source module.');
+        }
+        $result = $this->journals->reverse($journalNumber, $actor);
+        $this->assertBalanced($result['reversal']['lines']);
+        $this->accounts->applyJournalLines($result['reversal']['lines']);
+        $this->auditLogs->record($actor, 'reversed_cash_bank', $journalNumber, [
+            'reversal_entry_number' => $result['reversal']['journal_number'],
+            'posting_engine' => self::ENGINE_VERSION,
+        ], 'cash_bank_transaction');
 
         return $result;
     }

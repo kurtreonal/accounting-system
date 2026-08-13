@@ -9,9 +9,9 @@
     },
     {
         "id": 2,
-        "name": "Demo Accountant",
-        "email": "accountant@nexii.ph",
-        "password_hash": "$2y$12$eMtuvZRJyWGqV8I/WcrT8ehfCGl6791hQK5OhGWuB8KRWJfj4bb4K",
+        "name": "Lester",
+        "email": "accountant@gmail.com",
+        "password_hash": "$2y$12$UBbEzWrDvmbZHoZDIrnmROlq7xUjUXpZJFPogZ1dOGf2PfFF3O446",
         "role": "Accountant",
         "active": true
     },

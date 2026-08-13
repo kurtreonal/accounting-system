@@ -158,7 +158,7 @@ const setupAccountsPayable = () => {
         row.querySelector('[data-bill-description]').value = line.description || '';
         row.querySelector('[data-bill-quantity]').value = line.quantity ?? 1;
         row.querySelector('[data-bill-price]').value = line.unit_price ?? '';
-        row.querySelector('[data-bill-tax-rate]').value = line.tax_rate ?? 0;
+        if (line.tax_rate !== undefined) row.querySelector('[data-bill-tax-rate]').value = line.tax_rate;
         billLineRows.append(row);
         updateBillTotals();
     };

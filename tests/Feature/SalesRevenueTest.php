@@ -13,7 +13,7 @@ class SalesRevenueTest extends TestCase
         parent::setUp();
 
         $suffix = uniqid('', true);
-        foreach (['accounts', 'journals', 'audit', 'customers', 'invoices', 'payments'] as $resource) {
+        foreach (['accounts', 'journals', 'audit', 'customers', 'invoices', 'payments', 'tax_codes'] as $resource) {
             $this->paths[$resource] = storage_path("framework/testing/sales-{$resource}-{$suffix}.json");
             file_put_contents($this->paths[$resource], '[]');
         }
@@ -21,6 +21,7 @@ class SalesRevenueTest extends TestCase
             $this->account('1100', 'Accounts Receivable', 'Asset'),
             $this->account('4000', 'Sales Revenue', 'Revenue'),
         ], JSON_THROW_ON_ERROR));
+        file_put_contents($this->paths['tax_codes'], json_encode($this->vatRates(), JSON_THROW_ON_ERROR));
 
         config()->set('accounting.accounts_path', $this->paths['accounts']);
         config()->set('accounting.journal_entries_path', $this->paths['journals']);
@@ -28,6 +29,7 @@ class SalesRevenueTest extends TestCase
         config()->set('accounting.customers_path', $this->paths['customers']);
         config()->set('accounting.invoices_path', $this->paths['invoices']);
         config()->set('accounting.customer_payments_path', $this->paths['payments']);
+        config()->set('accounting.tax_codes_path', $this->paths['tax_codes']);
     }
 
     protected function tearDown(): void
@@ -145,6 +147,11 @@ class SalesRevenueTest extends TestCase
     private function account(string $code, string $name, string $type): array
     {
         return ['code' => $code, 'name' => $name, 'type' => $type, 'sub_type' => '', 'balance' => 0, 'status' => 'Active'];
+    }
+
+    private function vatRates(): array
+    {
+        return [['id' => 1, 'code' => 'VAT-STD', 'name' => 'Standard VAT', 'rate' => 12, 'type' => 'VAT', 'applies_to' => 'Goods & Services', 'is_default' => true, 'status' => 'Active'], ['id' => 2, 'code' => 'VAT-ZERO', 'name' => 'Zero VAT', 'rate' => 0, 'type' => 'VAT', 'applies_to' => 'Exempt', 'is_default' => false, 'status' => 'Active']];
     }
 
     /** @return array{demo_user: array{id: int, name: string, email: string, role: string}} */

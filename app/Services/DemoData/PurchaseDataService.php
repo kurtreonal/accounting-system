@@ -45,10 +45,28 @@ class PurchaseDataService
     /** @return array<int, array<string, mixed>> */
     public function payments(): array
     {
-        $payments = $this->load($this->paymentsPath(), 'vendor payments');
+        $payments = array_map($this->normalizePayment(...), $this->load($this->paymentsPath(), 'vendor payments'));
         usort($payments, static fn (array $left, array $right): int => [$right['payment_date'], $right['payment_number']] <=> [$left['payment_date'], $left['payment_number']]);
 
         return $payments;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function postedPayments(): array
+    {
+        return array_values(array_filter($this->payments(), static fn (array $payment): bool => $payment['status'] === 'Posted'));
+    }
+
+    /** @return array<string, mixed> */
+    public function findPayment(string $paymentNumber): array
+    {
+        foreach ($this->payments() as $payment) {
+            if ($payment['payment_number'] === $paymentNumber) {
+                return $payment;
+            }
+        }
+
+        throw new RuntimeException('The vendor payment could not be found.');
     }
 
     /** @param array<string, mixed> $attributes
@@ -182,7 +200,7 @@ class PurchaseDataService
         return $this->mutate($this->paymentsPath(), 'vendor payments', function (array &$payments) use ($attributes): array {
             foreach ($payments as $payment) {
                 if (($payment['request_token'] ?? null) === ($attributes['request_token'] ?? null)) {
-                    throw new RuntimeException('This vendor payment request was already posted.');
+                    throw new RuntimeException('This vendor payment request already exists.');
                 }
             }
 
@@ -191,12 +209,73 @@ class PurchaseDataService
                 'id' => $this->nextId($payments),
                 'payment_number' => $this->nextPaymentNumber($payments, $attributes['payment_date']),
                 ...$attributes,
+                'status' => 'Draft',
+                'journal_entry_id' => null,
+                'submitted_by' => null,
+                'submitted_at' => null,
+                'posted_by' => null,
+                'posted_at' => null,
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
             $payments[] = $payment;
 
             return $payment;
+        });
+    }
+
+    /** @param array<string, mixed> $attributes
+     * @return array<string, mixed>
+     */
+    public function updatePayment(string $paymentNumber, array $attributes): array
+    {
+        return $this->mutate($this->paymentsPath(), 'vendor payments', function (array &$payments) use ($paymentNumber, $attributes): array {
+            $index = $this->paymentIndex($payments, $paymentNumber);
+            $current = $this->normalizePayment($payments[$index]);
+            if ($current['status'] !== 'Draft') {
+                throw new RuntimeException('Only draft vendor payments can be edited.');
+            }
+            $payments[$index] = [...$current, ...$attributes, 'payment_number' => $paymentNumber, 'status' => 'Draft', 'updated_at' => now()->toIso8601String()];
+
+            return $payments[$index];
+        });
+    }
+
+    /** @return array<string, mixed> */
+    public function submitPaymentForReview(string $paymentNumber, array $actor): array
+    {
+        return $this->transitionPayment($paymentNumber, 'Draft', 'For Review', ['submitted_by' => $this->actorSnapshot($actor), 'submitted_at' => now()->toIso8601String()]);
+    }
+
+    /** @return array<string, mixed> */
+    public function returnPaymentToDraft(string $paymentNumber): array
+    {
+        return $this->transitionPayment($paymentNumber, 'For Review', 'Draft', ['submitted_by' => null, 'submitted_at' => null]);
+    }
+
+    /** @return array<string, mixed> */
+    public function markPaymentPosted(string $paymentNumber, string $journalNumber, array $actor): array
+    {
+        return $this->mutate($this->paymentsPath(), 'vendor payments', function (array &$payments) use ($paymentNumber, $journalNumber, $actor): array {
+            $index = $this->paymentIndex($payments, $paymentNumber);
+            $payment = $this->normalizePayment($payments[$index]);
+            if (! in_array($payment['status'], ['Draft', 'For Review'], true)) {
+                throw new RuntimeException('Only draft or for-review vendor payments can be posted.');
+            }
+            $payments[$index] = [...$payment, 'status' => 'Posted', 'journal_entry_id' => $journalNumber, 'posted_by' => $this->actorSnapshot($actor), 'posted_at' => now()->toIso8601String(), 'updated_at' => now()->toIso8601String()];
+
+            return $payments[$index];
+        });
+    }
+
+    public function deletePayment(string $paymentNumber): void
+    {
+        $this->mutate($this->paymentsPath(), 'vendor payments', function (array &$payments) use ($paymentNumber): void {
+            $index = $this->paymentIndex($payments, $paymentNumber);
+            if ($this->normalizePayment($payments[$index])['status'] !== 'Draft') {
+                throw new RuntimeException('Only draft vendor payments can be deleted.');
+            }
+            array_splice($payments, $index, 1);
         });
     }
 
@@ -315,6 +394,47 @@ class PurchaseDataService
         throw new RuntimeException('The vendor bill could not be found.');
     }
 
+    /** @param array<int, array<string, mixed>> $payments */
+    private function paymentIndex(array $payments, string $paymentNumber): int
+    {
+        foreach ($payments as $index => $payment) {
+            if (($payment['payment_number'] ?? null) === $paymentNumber) {
+                return $index;
+            }
+        }
+
+        throw new RuntimeException('The vendor payment could not be found.');
+    }
+
+    /** @return array<string, mixed> */
+    private function transitionPayment(string $paymentNumber, string $from, string $to, array $attributes): array
+    {
+        return $this->mutate($this->paymentsPath(), 'vendor payments', function (array &$payments) use ($paymentNumber, $from, $to, $attributes): array {
+            $index = $this->paymentIndex($payments, $paymentNumber);
+            $payment = $this->normalizePayment($payments[$index]);
+            if ($payment['status'] !== $from) {
+                throw new RuntimeException("Only {$from} vendor payments can move to {$to}.");
+            }
+            $payments[$index] = [...$payment, ...$attributes, 'status' => $to, 'updated_at' => now()->toIso8601String()];
+
+            return $payments[$index];
+        });
+    }
+
+    /** @param array<string, mixed> $payment
+     * @return array<string, mixed>
+     */
+    private function normalizePayment(array $payment): array
+    {
+        return [...$payment, 'status' => $payment['status'] ?? 'Posted'];
+    }
+
+    /** @return array{id: mixed, name: mixed} */
+    private function actorSnapshot(array $actor): array
+    {
+        return ['id' => $actor['id'] ?? null, 'name' => $actor['name'] ?? 'Demo User'];
+    }
+
     /** @param array<int, array<string, mixed>> $vendors */
     private function requireUniqueVendorCode(array $vendors, string $code, ?int $exceptId = null): void
     {
@@ -362,7 +482,7 @@ class PurchaseDataService
     private function paymentTotals(): array
     {
         $totals = [];
-        foreach ($this->payments() as $payment) {
+        foreach ($this->postedPayments() as $payment) {
             foreach ($payment['allocations'] ?? [] as $allocation) {
                 $billNumber = (string) ($allocation['bill_number'] ?? '');
                 if ($billNumber === '') {

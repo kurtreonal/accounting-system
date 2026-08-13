@@ -144,6 +144,14 @@ class JournalEntryManagementTest extends TestCase
         $number = $entry['journal_number'];
 
         $csv = $this->withSession($viewer)->get(route('journal-entries.export.csv'))->streamedContent();
+        $this->assertStringNotContainsString($number, $csv);
+        $this->withSession($viewer)->get(route('journal-entries.print', $number))
+            ->assertNotFound();
+        $this->withSession($viewer)->get(route('journal-entries.pdf', $number))->assertNotFound();
+
+        $this->withSession($this->demoSession())->postJson(route('journal-entries.submit-review', $number))->assertOk();
+        $this->withSession($this->demoSession())->postJson(route('journal-entries.post', $number))->assertOk();
+        $csv = $this->withSession($viewer)->get(route('journal-entries.export.csv'))->streamedContent();
         $this->assertStringContainsString($number, $csv);
         $this->withSession($viewer)->get(route('journal-entries.print', $number))
             ->assertOk()

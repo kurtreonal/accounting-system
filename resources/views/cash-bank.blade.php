@@ -1,7 +1,7 @@
 @extends('layouts.accounting', ['pageTitle' => 'Cash & Bank', 'activePage' => 'cash-bank'])
 
 @section('content')
-@php($canManage = in_array($user['role'], ['Administrator', 'Accountant'], true))
+@php($canManage = $demoCan('cash_bank.manage'))
 <main id="cash-bank-page" class="p-4 sm:p-5"
     data-account-url="{{ route('cash-bank.accounts.store') }}"
     data-account-update-url="{{ route('cash-bank.accounts.update', ['code' => '__CODE__']) }}"

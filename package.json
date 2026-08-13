@@ -5,7 +5,8 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "test:accounting": "node --test tests/js/accounting-engine.test.js"
+        "test:accounting": "node --test tests/js/accounting-engine.test.js",
+        "test:roles": "node --test tests/js/demo-access.test.js"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",

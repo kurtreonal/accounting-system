@@ -48,7 +48,7 @@ class TaxSettingTest extends TestCase
             ->assertSee('Tax / VAT Settings')->assertSee('Demonstration configuration only')
             ->assertSee('data-tax-tab="rates"', false)->assertSee('data-tax-tab="summary"', false)
             ->assertSee('Add Tax Rate')->assertSee('aria-current="page"', false);
-        $this->withSession($this->demoSession('Accountant'))->get('/tax-settings')->assertOk()->assertDontSee('id="tax-add"', false);
+        $this->withSession($this->demoSession('Accountant'))->get('/tax-settings')->assertForbidden();
     }
 
     public function test_administrator_can_create_edit_set_default_and_disable_non_default_codes(): void

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\Accounting\AccountingPostingService;
+use App\Services\DemoAccessService;
 use App\Services\DemoData\AccountDataService;
 use App\Services\DemoData\AuditLogDataService;
 use App\Services\DemoData\JournalEntryDataService;
@@ -24,13 +25,14 @@ class JournalEntryController extends Controller
         Request $request,
         JournalEntryDataService $journals,
         AccountDataService $accounts,
+        DemoAccessService $access,
     ): View|RedirectResponse {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
         }
 
         return view('journal-entries', [
-            'journalEntries' => $journals->all(),
+            'journalEntries' => $this->visibleEntries($journals->all(), $request, $access),
             'activeAccounts' => $accounts->all(['status' => 'Active']),
             'user' => $request->session()->get('demo_user'),
         ]);
@@ -194,13 +196,13 @@ class JournalEntryController extends Controller
         ]);
     }
 
-    public function csv(Request $request, JournalEntryDataService $journals): StreamedResponse|RedirectResponse
+    public function csv(Request $request, JournalEntryDataService $journals, DemoAccessService $access): StreamedResponse|RedirectResponse
     {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
         }
 
-        $entries = $this->filtered($journals->all(), $request);
+        $entries = $this->filtered($this->visibleEntries($journals->all(), $request, $access), $request);
 
         return response()->streamDownload(static function () use ($entries): void {
             $output = fopen('php://output', 'wb');
@@ -222,7 +224,7 @@ class JournalEntryController extends Controller
         }, 'journal-entries.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    public function print(Request $request, string $journalNumber, JournalEntryDataService $journals): View|RedirectResponse
+    public function print(Request $request, string $journalNumber, JournalEntryDataService $journals, DemoAccessService $access): View|RedirectResponse
     {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
@@ -230,6 +232,9 @@ class JournalEntryController extends Controller
 
         try {
             $entry = $journals->find($journalNumber);
+            if ($access->isViewer($request) && ! in_array($entry['status'], ['Posted', 'Reversed'], true)) {
+                throw new RuntimeException('The journal entry could not be found.');
+            }
         } catch (RuntimeException) {
             abort(404, 'The journal entry could not be found.');
         }
@@ -241,12 +246,13 @@ class JournalEntryController extends Controller
         Request $request,
         JournalEntryDataService $journals,
         AccountingPdfExportService $exports,
+        DemoAccessService $access,
     ): Response|RedirectResponse {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
         }
 
-        $entries = $this->filtered($journals->all(), $request);
+        $entries = $this->filtered($this->visibleEntries($journals->all(), $request, $access), $request);
         $content = $exports->journalEntries($entries, [
             'search' => trim((string) $request->query('search', '')),
             'status' => trim((string) $request->query('status', '')),
@@ -260,6 +266,7 @@ class JournalEntryController extends Controller
         string $journalNumber,
         JournalEntryDataService $journals,
         AccountingPdfExportService $exports,
+        DemoAccessService $access,
     ): Response|RedirectResponse {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
@@ -267,6 +274,9 @@ class JournalEntryController extends Controller
 
         try {
             $entry = $journals->find($journalNumber);
+            if ($access->isViewer($request) && ! in_array($entry['status'], ['Posted', 'Reversed'], true)) {
+                throw new RuntimeException('The journal entry could not be found.');
+            }
         } catch (RuntimeException) {
             abort(404, 'The journal entry could not be found.');
         }
@@ -275,6 +285,18 @@ class JournalEntryController extends Controller
             $exports->journalEntry($entry, now()),
             $entry['journal_number'].'.pdf',
         );
+    }
+
+    /** @param array<int, array<string, mixed>> $entries
+     * @return array<int, array<string, mixed>>
+     */
+    private function visibleEntries(array $entries, Request $request, DemoAccessService $access): array
+    {
+        if (! $access->isViewer($request)) {
+            return $entries;
+        }
+
+        return array_values(array_filter($entries, static fn (array $entry): bool => in_array($entry['status'], ['Posted', 'Reversed'], true)));
     }
 
     /** @return array<string, mixed>|JsonResponse */

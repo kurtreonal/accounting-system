@@ -8,8 +8,10 @@
             <div><h1 class="text-xl font-bold text-slate-900">Dashboard</h1><p class="mt-1 text-sm text-slate-500">Live summary from current accounting records</p></div>
             <div class="flex flex-wrap gap-2">
                 <button type="button" class="apm-outline-button" data-print-page><i class="fa-solid fa-print" aria-hidden="true"></i> Print</button>
-                <a href="{{ route('sales-revenue', ['new' => 'invoice']) }}" class="apm-outline-button"><i class="fa-solid fa-file-invoice" aria-hidden="true"></i> New Invoice</a>
-                <a href="{{ route('journal-entries', ['new' => 1]) }}" class="apm-primary-button"><i class="fa-solid fa-plus" aria-hidden="true"></i> New Journal Entry</a>
+                @if ($demoCan('drafts.manage'))
+                    <a href="{{ route('sales-revenue', ['new' => 'invoice']) }}" class="apm-outline-button"><i class="fa-solid fa-file-invoice" aria-hidden="true"></i> New Invoice</a>
+                    <a href="{{ route('journal-entries', ['new' => 1]) }}" class="apm-primary-button"><i class="fa-solid fa-plus" aria-hidden="true"></i> New Journal Entry</a>
+                @endif
             </div>
         </div>
     </div>

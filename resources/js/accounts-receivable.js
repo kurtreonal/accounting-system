@@ -1,4 +1,5 @@
-import { allocationTotal, createPosting, validateAllocations } from './accounting-engine';
+import { allocationTotal, validateAllocations } from './accounting-engine';
+import { can } from './demo-access';
 
 const setupAccountsReceivable = () => {
     const page = document.querySelector('#accounts-receivable-page');
@@ -7,6 +8,7 @@ const setupAccountsReceivable = () => {
 
     const data = JSON.parse(dataElement.textContent || '{"invoices":[],"customers":[],"cashAccounts":[]}');
     const invoices = data.invoices || [];
+    const payments = data.payments || [];
     const money = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
     const modal = document.querySelector('#ar-payment-modal');
     const form = document.querySelector('#ar-payment-form');
@@ -16,9 +18,10 @@ const setupAccountsReceivable = () => {
     const search = document.querySelector('#ar-search');
     const status = document.querySelector('#ar-status');
     const csrf = form.querySelector('input[name="_token"]').value;
-    const canPostPayment = ['Administrator', 'Accountant'].includes(page.dataset.userRole) && data.cashAccounts.length > 0;
+    const canManagePayment = can('drafts.manage') && data.cashAccounts.length > 0;
     const pageSize = 10;
     let currentPage = 1;
+    let editingPayment = '';
 
     const escapeHtml = (value) => String(value ?? '')
         .replaceAll('&', '&amp;')
@@ -62,10 +65,10 @@ const setupAccountsReceivable = () => {
         } else {
             invoiceRows.innerHTML = visible.map((invoice) => {
                 const payable = invoice.status !== 'Draft' && Number(invoice.remaining_balance) > 0;
-                const action = payable && canPostPayment
+                const action = payable && canManagePayment
                     ? `<button type="button" data-record-payment="${escapeHtml(invoice.invoice_number)}" class="apm-row-action">Record Payment</button>`
                     : payable
-                        ? `<button type="button" class="apm-row-action opacity-50" disabled title="Only Administrators and Accountants with an active cash or bank account can post payments.">Record Payment</button>`
+                        ? `<button type="button" class="apm-row-action opacity-50" disabled title="Your role cannot create payment drafts, or no active cash/bank account exists.">Record Payment</button>`
                         : `<a class="apm-row-action inline-block" href="${page.dataset.salesUrl}?invoice=${encodeURIComponent(invoice.invoice_number)}">View</a>`;
                 return `<tr class="apm-table-row">
                     <td><a href="${page.dataset.salesUrl}?invoice=${encodeURIComponent(invoice.invoice_number)}" class="apm-code text-blue-600 hover:underline">${escapeHtml(invoice.invoice_number)}</a></td>
@@ -164,11 +167,30 @@ const setupAccountsReceivable = () => {
         updateAllocation(row);
     };
     const resetPaymentForm = () => {
+        editingPayment = '';
         form.reset();
         form.elements.request_token.value = token();
         allocationRows.replaceChildren();
         clearErrors();
         updateTotal();
+    };
+    const editPayment = (payment) => {
+        resetPaymentForm();
+        editingPayment = payment.receipt_number;
+        form.elements.request_token.value = payment.request_token;
+        form.elements.customer_id.value = payment.customer_id;
+        form.elements.payment_date.value = payment.payment_date;
+        form.elements.cash_account_code.value = payment.cash_account_code;
+        form.elements.reference.value = payment.reference || '';
+        form.elements.memo.value = payment.memo || '';
+        (payment.allocations || []).forEach((allocation) => {
+            const row = allocationTemplate.content.cloneNode(true).firstElementChild;
+            row.querySelector('[data-allocation-invoice]').innerHTML = invoiceOptions(allocation.invoice_number);
+            allocationRows.append(row);
+            row.querySelector('[data-allocation-amount]').value = Number(allocation.amount).toFixed(2);
+            updateAllocation(row, true);
+        });
+        setModal(true);
     };
 
     document.querySelectorAll('[data-ar-tab]').forEach((button) => button.addEventListener('click', () => {
@@ -222,9 +244,8 @@ const setupAccountsReceivable = () => {
             invoice_number: row.querySelector('[data-allocation-invoice]').value,
             amount: row.querySelector('[data-allocation-amount]').value,
         }));
-        let total;
         try {
-            total = validateAllocations(allocations, openInvoicesFor(form.elements.customer_id.value), 'invoice_number');
+            validateAllocations(allocations, openInvoicesFor(form.elements.customer_id.value), 'invoice_number');
         } catch (problem) {
             showMessage(problem.message);
             return;
@@ -238,19 +259,12 @@ const setupAccountsReceivable = () => {
             memo: form.elements.memo.value.trim(),
             allocations,
         };
-        try {
-            payload.posting = createPosting('customer-payment', { ...payload, amount: total }, data.accounts || []);
-        } catch (problem) {
-            showMessage(problem.message);
-            return;
-        }
-
         const submit = document.querySelector('#ar-payment-submit');
         submit.disabled = true;
 
         try {
-            const response = await fetch(page.dataset.paymentUrl, {
-                method: 'POST',
+            const response = await fetch(editingPayment ? `${page.dataset.paymentUrl}/${encodeURIComponent(editingPayment)}` : page.dataset.paymentUrl, {
+                method: editingPayment ? 'PUT' : 'POST',
                 headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
                 body: JSON.stringify(payload),
             });
@@ -266,6 +280,26 @@ const setupAccountsReceivable = () => {
             showMessage('Network error. Payment was not submitted.');
             submit.disabled = false;
         }
+    });
+
+    document.querySelector('[data-ar-panel="payments"]')?.addEventListener('click', async (event) => {
+        const edit = event.target.closest('[data-ar-edit-payment]');
+        if (edit) {
+            const payment = payments.find((item) => item.receipt_number === edit.dataset.arEditPayment);
+            if (payment) editPayment(payment);
+            return;
+        }
+        const action = event.target.closest('[data-ar-payment-action]');
+        if (!action || !globalThis.confirm(`${action.dataset.arPaymentAction.replace('-', ' ')} ${action.dataset.paymentNumber}?`)) return;
+        const suffix = action.dataset.arPaymentAction === 'delete' ? '' : `/${action.dataset.arPaymentAction}`;
+        const response = await fetch(`${page.dataset.paymentUrl}/${encodeURIComponent(action.dataset.paymentNumber)}${suffix}`, {
+            method: action.dataset.arPaymentAction === 'delete' ? 'DELETE' : 'POST',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+            body: JSON.stringify({}),
+        });
+        const result = await response.json();
+        if (!response.ok) { globalThis.alert(result.message || 'Payment action failed.'); return; }
+        window.location.reload();
     });
 
     const bucketName = (days) => days <= 0 ? 'Current' : days <= 30 ? '1–30 Days' : days <= 60 ? '31–60 Days' : days <= 90 ? '61–90 Days' : 'Over 90 Days';

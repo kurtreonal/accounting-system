@@ -1,5 +1,7 @@
 import { allocationTotal, createPosting, documentTotals, validateAllocations } from './accounting-engine';
 
+import { can } from './demo-access';
+
 const setupAccountsPayable = () => {
     const page = document.querySelector('#accounts-payable-page');
     const dataElement = document.querySelector('#ap-data');
@@ -10,9 +12,8 @@ const setupAccountsPayable = () => {
     const vendors = data.vendors || [];
     const payments = data.payments || [];
     const money = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
-    const role = page.dataset.userRole;
-    const canMutate = role !== 'Viewer / Auditor';
-    const canApprove = ['Administrator', 'Accountant'].includes(role);
+    const canMutate = can('drafts.manage');
+    const canApprove = can('transactions.approve');
     const csrf = document.querySelector('#ap-bill-form input[name="_token"]').value;
     const billRows = document.querySelector('#ap-bill-rows');
     const search = document.querySelector('#ap-search');
@@ -83,7 +84,7 @@ const setupAccountsPayable = () => {
                 actions.push(actionButton('Edit', 'data-edit-bill', bill.bill_number, canMutate));
                 actions.push(actionButton('Post', 'data-post-bill', bill.bill_number, canApprove));
             } else if (Number(bill.remaining_balance) > 0) {
-                actions.push(actionButton('Pay', 'data-pay-bill', bill.bill_number, canApprove && data.cashAccounts.length > 0));
+                actions.push(actionButton('Pay', 'data-pay-bill', bill.bill_number, canMutate && data.cashAccounts.length > 0));
             }
             return `<tr class="apm-table-row">
                 <td><button type="button" data-view-bill="${escapeHtml(bill.bill_number)}" class="apm-code text-left text-blue-600 hover:underline">${escapeHtml(bill.bill_number)}</button><p class="mt-1 text-[10px] text-slate-400">${escapeHtml(bill.reference)}</p></td>
@@ -208,7 +209,7 @@ const setupAccountsPayable = () => {
             if (target) target.textContent = message;
         });
     };
-    document.querySelector('#ap-new-bill').addEventListener('click', () => { resetBillForm(); setModal('bill', true); billForm.elements.vendor_id.focus(); });
+    document.querySelector('#ap-new-bill')?.addEventListener('click', () => { resetBillForm(); setModal('bill', true); billForm.elements.vendor_id.focus(); });
     document.querySelector('#ap-add-bill-line').addEventListener('click', () => addBillLine());
     billLineRows.addEventListener('input', updateBillTotals);
     billLineRows.addEventListener('click', (event) => {
@@ -284,7 +285,7 @@ const setupAccountsPayable = () => {
             if (target) target.textContent = Array.isArray(messages) ? messages[0] : messages;
         });
     };
-    document.querySelector('#ap-new-vendor').addEventListener('click', () => { resetVendorForm(); setModal('vendor', true); vendorForm.elements.code.focus(); });
+    document.querySelector('#ap-new-vendor')?.addEventListener('click', () => { resetVendorForm(); setModal('vendor', true); vendorForm.elements.code.focus(); });
     vendorForm.addEventListener('submit', async (event) => {
         event.preventDefault(); clearVendorErrors();
         const id = vendorForm.elements.vendor_id.value;
@@ -331,6 +332,7 @@ const setupAccountsPayable = () => {
     document.querySelector('#ap-vendor-status').addEventListener('change', filterVendors);
 
     const paymentForm = document.querySelector('#ap-payment-form');
+    let editingPayment = '';
     const allocationRows = document.querySelector('#ap-allocation-rows');
     const allocationTemplate = document.querySelector('#ap-allocation-template');
     const openBillsFor = (vendorId) => bills.filter((bill) => String(bill.vendor_id) === String(vendorId) && bill.status !== 'Draft' && Number(bill.remaining_balance) > 0);
@@ -358,7 +360,25 @@ const setupAccountsPayable = () => {
         allocationRows.append(row); updateAllocation(row);
     };
     const resetPaymentForm = () => {
+        editingPayment = '';
         paymentForm.reset(); paymentForm.elements.request_token.value = requestToken(); allocationRows.replaceChildren(); clearPaymentErrors(); updatePaymentTotal();
+    };
+    const editPayment = (payment) => {
+        resetPaymentForm(); editingPayment = payment.payment_number;
+        paymentForm.elements.request_token.value = payment.request_token;
+        paymentForm.elements.vendor_id.value = payment.vendor_id;
+        paymentForm.elements.payment_date.value = payment.payment_date;
+        paymentForm.elements.cash_account_code.value = payment.cash_account_code;
+        paymentForm.elements.reference.value = payment.reference || '';
+        paymentForm.elements.memo.value = payment.memo || '';
+        (payment.allocations || []).forEach((allocation) => {
+            const row = allocationTemplate.content.cloneNode(true).firstElementChild;
+            row.querySelector('[data-allocation-bill]').innerHTML = billOptions(allocation.bill_number);
+            allocationRows.append(row);
+            row.querySelector('[data-allocation-amount]').value = Number(allocation.amount).toFixed(2);
+            updateAllocation(row, true);
+        });
+        setModal('payment', true);
     };
     document.querySelector('#ap-add-allocation').addEventListener('click', () => addAllocation());
     paymentForm.elements.vendor_id.addEventListener('change', () => { allocationRows.replaceChildren(); clearPaymentErrors(); updatePaymentTotal(); });
@@ -384,9 +404,8 @@ const setupAccountsPayable = () => {
         event.preventDefault(); clearPaymentErrors();
         if (allocationRows.children.length === 0) { paymentForm.querySelector('[data-payment-error="allocations"]').textContent = 'Add at least one bill.'; return; }
         const allocations = [...allocationRows.querySelectorAll('tr')].map((row) => ({ bill_number: row.querySelector('[data-allocation-bill]').value, amount: row.querySelector('[data-allocation-amount]').value }));
-        let total;
         try {
-            total = validateAllocations(allocations, openBillsFor(paymentForm.elements.vendor_id.value), 'bill_number');
+            validateAllocations(allocations, openBillsFor(paymentForm.elements.vendor_id.value), 'bill_number');
         } catch (problem) {
             showFormMessage('[data-payment-message]', problem.message);
             return;
@@ -399,20 +418,28 @@ const setupAccountsPayable = () => {
             reference: paymentForm.elements.reference.value.trim(), memo: paymentForm.elements.memo.value.trim(),
             allocations,
         };
-        try {
-            payload.posting = createPosting('vendor-payment', { ...payload, amount: total }, data.accounts || []);
-        } catch (problem) {
-            showFormMessage('[data-payment-message]', problem.message);
-            return;
-        }
         const submit = document.querySelector('#ap-payment-submit'); submit.disabled = true;
         try {
-            const { response, result } = await fetchJson(page.dataset.paymentUrl, 'POST', payload);
+            const { response, result } = await fetchJson(editingPayment ? `${page.dataset.paymentUrl}/${encodeURIComponent(editingPayment)}` : page.dataset.paymentUrl, editingPayment ? 'PUT' : 'POST', payload);
             if (!response.ok) { showPaymentErrors(result); submit.disabled = false; return; }
             showFormMessage('[data-payment-message]', result.message, true); window.setTimeout(() => window.location.reload(), 650);
         } catch (_) {
             showFormMessage('[data-payment-message]', 'Network error. Vendor payment was not submitted.'); submit.disabled = false;
         }
+    });
+    document.querySelector('[data-ap-panel="payments"]')?.addEventListener('click', async (event) => {
+        const edit = event.target.closest('[data-ap-edit-payment]');
+        if (edit) {
+            const payment = payments.find((item) => item.payment_number === edit.dataset.apEditPayment);
+            if (payment) editPayment(payment);
+            return;
+        }
+        const action = event.target.closest('[data-ap-payment-action]');
+        if (!action || !globalThis.confirm(`${action.dataset.apPaymentAction.replace('-', ' ')} ${action.dataset.paymentNumber}?`)) return;
+        const suffix = action.dataset.apPaymentAction === 'delete' ? '' : `/${action.dataset.apPaymentAction}`;
+        const { response, result } = await fetchJson(`${page.dataset.paymentUrl}/${encodeURIComponent(action.dataset.paymentNumber)}${suffix}`, action.dataset.apPaymentAction === 'delete' ? 'DELETE' : 'POST', {});
+        if (!response.ok) { globalThis.alert(result.message || 'Payment action failed.'); return; }
+        window.location.reload();
     });
 
     const showBillDetail = (bill) => {
@@ -453,7 +480,7 @@ const setupAccountsPayable = () => {
     });
 
     const bucketName = (days) => days <= 0 ? 'Current' : days <= 30 ? '1-30 Days' : days <= 60 ? '31-60 Days' : days <= 90 ? '61-90 Days' : 'Over 90 Days';
-    const paidThrough = (billNumber, asOf) => payments.filter((payment) => payment.payment_date <= asOf).reduce((total, payment) => total + (payment.allocations || []).filter((allocation) => allocation.bill_number === billNumber).reduce((sum, allocation) => sum + Number(allocation.amount || 0), 0), 0);
+    const paidThrough = (billNumber, asOf) => payments.filter((payment) => payment.status === 'Posted' && payment.payment_date <= asOf).reduce((total, payment) => total + (payment.allocations || []).filter((allocation) => allocation.bill_number === billNumber).reduce((sum, allocation) => sum + Number(allocation.amount || 0), 0), 0);
     const renderAging = () => {
         const asOf = document.querySelector('#ap-as-of').value;
         const vendorFilter = document.querySelector('#ap-aging-vendor').value;

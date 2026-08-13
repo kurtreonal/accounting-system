@@ -1,3 +1,5 @@
+import { can } from './demo-access';
+
 const setupChartOfAccounts = () => {
     const page = document.querySelector('#chart-of-accounts-page');
     const dataElement = document.querySelector('#chart-of-accounts-data');
@@ -8,6 +10,7 @@ const setupChartOfAccounts = () => {
     if (!page || !dataElement || !modal || !form) return;
 
     const accounts = JSON.parse(dataElement.textContent || '[]');
+    const canConfigure = can('configuration.manage');
     const modalTitle = document.querySelector('#new-account-modal-title');
     const openButton = document.querySelector('#new-account-button');
     const submitButton = document.querySelector('#create-account-button');
@@ -107,7 +110,7 @@ const setupChartOfAccounts = () => {
         modal.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('overflow-hidden');
         editingCode = null;
-        openButton.focus();
+        openButton?.focus();
     };
 
     const showToast = (message, isError = false) => {
@@ -177,12 +180,14 @@ const setupChartOfAccounts = () => {
             badge.textContent = 'Active';
             statusCell.append(badge);
         } else {
-            const badge = document.createElement('button');
-            badge.type = 'button';
-            badge.dataset.action = 'reactivate';
-            badge.dataset.code = account.code;
-            badge.title = 'Reactivate account';
-            badge.className = 'inline-flex cursor-pointer rounded-md bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600 transition hover:bg-emerald-100 hover:text-emerald-700';
+            const badge = document.createElement(canConfigure ? 'button' : 'span');
+            if (canConfigure) {
+                badge.type = 'button';
+                badge.dataset.action = 'reactivate';
+                badge.dataset.code = account.code;
+                badge.title = 'Reactivate account';
+            }
+            badge.className = `inline-flex rounded-md bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600 ${canConfigure ? 'cursor-pointer transition hover:bg-emerald-100 hover:text-emerald-700' : ''}`;
             badge.textContent = 'Inactive';
             statusCell.append(badge);
         }
@@ -191,17 +196,22 @@ const setupChartOfAccounts = () => {
         actionCell.className = 'whitespace-nowrap px-4 py-3';
         const actions = document.createElement('div');
         actions.className = 'flex items-center gap-1.5';
-        actions.append(
-            createActionButton('Edit', 'edit', account.code, 'bg-slate-100 text-slate-700 hover:bg-slate-200'),
-            createActionButton(
-                account.status === 'Active' ? 'Deactivate' : 'Deactivated',
-                'deactivate',
-                account.code,
-                'bg-orange-50 text-orange-700 hover:bg-orange-100',
-                account.status === 'Inactive',
-            ),
-            createActionButton('Delete', 'delete', account.code, 'bg-red-50 text-red-700 hover:bg-red-100'),
-        );
+        if (canConfigure) {
+            actions.append(
+                createActionButton('Edit', 'edit', account.code, 'bg-slate-100 text-slate-700 hover:bg-slate-200'),
+                createActionButton(
+                    account.status === 'Active' ? 'Deactivate' : 'Deactivated',
+                    'deactivate',
+                    account.code,
+                    'bg-orange-50 text-orange-700 hover:bg-orange-100',
+                    account.status === 'Inactive',
+                ),
+                createActionButton('Delete', 'delete', account.code, 'bg-red-50 text-red-700 hover:bg-red-100'),
+            );
+        } else {
+            actions.textContent = 'View only';
+            actions.className = 'text-[10px] text-slate-400';
+        }
         actionCell.append(actions);
         return row;
     };
@@ -364,7 +374,7 @@ const setupChartOfAccounts = () => {
         currentPage = 1;
         renderAccounts();
     }));
-    openButton.addEventListener('click', openCreateModal);
+    openButton?.addEventListener('click', openCreateModal);
     modal.querySelectorAll('[data-modal-close]').forEach((button) => button.addEventListener('click', closeModal));
     modal.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && !submitting) closeModal();

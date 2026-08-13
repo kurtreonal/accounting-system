@@ -1,11 +1,12 @@
+import { can } from './demo-access';
+
 const setupExpenses = () => {
     const page = document.querySelector('#expenses-page');
     if (!page) return;
 
     const records = JSON.parse(document.querySelector('#expense-data').textContent).expenses || [];
-    const role = page.dataset.userRole;
-    const canMutate = role !== 'Viewer / Auditor';
-    const canApprove = ['Administrator', 'Accountant'].includes(role);
+    const canMutate = can('drafts.manage');
+    const canApprove = can('transactions.approve');
     const money = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
     const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
     const form = document.querySelector('#expense-form');

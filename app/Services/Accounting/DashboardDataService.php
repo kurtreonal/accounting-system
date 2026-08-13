@@ -97,8 +97,8 @@ class DashboardDataService
             'chart_max' => $maxChartValue,
             'cash_accounts' => $cashAccounts,
             'recent_journals' => array_slice($journals, 0, 6),
-            'recent_customer_payments' => array_slice($this->sales->payments(), 0, 5),
-            'recent_vendor_payments' => array_slice($this->purchases->payments(), 0, 5),
+            'recent_customer_payments' => array_slice($this->sales->postedPayments(), 0, 5),
+            'recent_vendor_payments' => array_slice($this->purchases->postedPayments(), 0, 5),
         ];
     }
 

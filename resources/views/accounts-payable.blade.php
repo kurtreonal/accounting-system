@@ -21,9 +21,11 @@
                 <h1 class="text-xl font-bold text-slate-900">Accounts Payable</h1>
                 <p class="mt-1 text-sm text-slate-500">Manage vendor bills and outgoing payments</p>
             </div>
-            <button id="ap-new-bill" type="button" class="apm-primary-button" @disabled($user['role'] === 'Viewer / Auditor') title="{{ $user['role'] === 'Viewer / Auditor' ? 'Viewer role has read-only access.' : 'Create vendor bill' }}">
-                <i class="fa-solid fa-plus" aria-hidden="true"></i> New Bill
-            </button>
+            @if ($demoCan('drafts.manage'))
+                <button id="ap-new-bill" type="button" class="apm-primary-button" title="Create vendor bill">
+                    <i class="fa-solid fa-plus" aria-hidden="true"></i> New Bill
+                </button>
+            @endif
         </div>
     </div>
 
@@ -45,6 +47,7 @@
     <div class="mt-5 flex overflow-x-auto border-b border-slate-200 print:hidden" role="tablist" aria-label="Accounts Payable sections">
         <button type="button" class="apm-tab border-blue-600 text-blue-600" data-ap-tab="bills" role="tab" aria-selected="true">Bills</button>
         <button type="button" class="apm-tab" data-ap-tab="vendors" role="tab" aria-selected="false">Vendors</button>
+        <button type="button" class="apm-tab" data-ap-tab="payments" role="tab" aria-selected="false">Payments</button>
         <button type="button" class="apm-tab" data-ap-tab="aging" role="tab" aria-selected="false">Aging Report</button>
     </div>
 
@@ -97,10 +100,24 @@
         </footer>
     </section>
 
+    <section data-ap-panel="payments" hidden class="dashboard-enter mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <header class="border-b border-slate-100 px-5 py-4"><h2 class="text-sm font-semibold text-slate-900">Vendor Payments</h2><p class="mt-0.5 text-xs text-slate-500">Draft, review, and posted disbursements</p></header>
+        <div class="overflow-x-auto"><table class="w-full min-w-[850px] text-left text-xs"><thead class="bg-slate-50 text-[10px] uppercase text-slate-500"><tr><th class="px-4 py-3">Payment</th><th class="px-4 py-3">Date</th><th class="px-4 py-3">Vendor</th><th class="px-4 py-3 text-right">Amount</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Journal</th><th class="px-4 py-3">Actions</th></tr></thead><tbody>
+            @forelse ($payments as $payment)<tr class="apm-table-row"><td class="apm-code">{{ $payment['payment_number'] }}</td><td>{{ $payment['payment_date'] }}</td><td>{{ $payment['vendor_name'] }}</td><td class="apm-money text-right">&#8369;{{ number_format($payment['amount'], 2) }}</td><td>{{ $payment['status'] }}</td><td class="apm-code">{{ $payment['journal_entry_id'] ?? '—' }}</td><td class="apm-actions">
+                @if ($payment['status'] === 'Draft' && $demoCan('drafts.manage'))<button data-ap-edit-payment="{{ $payment['payment_number'] }}">Edit</button><button data-ap-payment-action="delete" data-payment-number="{{ $payment['payment_number'] }}">Delete</button>@endif
+                @if ($payment['status'] === 'Draft' && $demoCan('drafts.submit'))<button data-ap-payment-action="submit-review" data-payment-number="{{ $payment['payment_number'] }}">Submit</button>@endif
+                @if ($payment['status'] === 'For Review' && $demoCan('transactions.approve'))<button data-ap-payment-action="return-draft" data-payment-number="{{ $payment['payment_number'] }}">Return</button><button data-ap-payment-action="post" data-payment-number="{{ $payment['payment_number'] }}">Post</button>@endif
+                @if ($payment['status'] === 'Posted')<span class="text-slate-400">Immutable</span>@endif
+            </td></tr>@empty<tr><td colspan="7" class="px-5 py-12 text-center text-slate-500">No vendor payments.</td></tr>@endforelse
+        </tbody></table></div>
+    </section>
+
     <section data-ap-panel="vendors" hidden class="dashboard-enter mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <header class="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div><h2 class="text-sm font-semibold text-slate-900">Vendors</h2><p class="mt-0.5 text-xs text-slate-500">Contact details, terms, and posted balances</p></div>
-            <button id="ap-new-vendor" type="button" class="apm-outline-button" @disabled($user['role'] === 'Viewer / Auditor')><i class="fa-solid fa-plus" aria-hidden="true"></i> New Vendor</button>
+            @if ($demoCan('master_data.manage'))
+                <button id="ap-new-vendor" type="button" class="apm-outline-button"><i class="fa-solid fa-plus" aria-hidden="true"></i> New Vendor</button>
+            @endif
         </header>
         <div class="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row">
             <label class="relative max-w-sm flex-1"><span class="sr-only">Search vendors</span><i class="fa-solid fa-magnifying-glass pointer-events-none absolute top-3 left-3 text-xs text-slate-400" aria-hidden="true"></i><input id="ap-vendor-search" type="search" placeholder="Search vendor or code..." class="h-9 w-full rounded-lg border border-slate-200 pr-3 pl-8 text-xs outline-none focus:border-blue-400 focus:ring-3 focus:ring-blue-100"></label>
@@ -117,8 +134,12 @@
                             <td>{{ $vendor['contact_person'] ?: '-' }}</td><td>{{ $vendor['payment_terms_days'] }} days</td><td class="apm-money text-right">{{ $vendor['bill_count'] }}</td><td class="apm-money text-right">&#8369;{{ number_format($vendor['outstanding'], 2) }}</td>
                             <td><span class="{{ $vendor['status'] === 'Active' ? 'apm-active-badge' : 'inline-flex rounded-md bg-slate-100 px-2 py-1 text-[10px] text-slate-600' }}">{{ $vendor['status'] }}</span></td>
                             <td class="apm-actions">
-                                <button type="button" data-edit-vendor="{{ $vendor['id'] }}" @disabled($user['role'] === 'Viewer / Auditor')>Edit</button>
-                                <button type="button" data-toggle-vendor="{{ $vendor['id'] }}" data-next-status="{{ $vendor['status'] === 'Active' ? 'Inactive' : 'Active' }}" @disabled($user['role'] === 'Viewer / Auditor')>{{ $vendor['status'] === 'Active' ? 'Deactivate' : 'Activate' }}</button>
+                                @if ($demoCan('master_data.manage'))
+                                    <button type="button" data-edit-vendor="{{ $vendor['id'] }}">Edit</button>
+                                    <button type="button" data-toggle-vendor="{{ $vendor['id'] }}" data-next-status="{{ $vendor['status'] === 'Active' ? 'Inactive' : 'Active' }}">{{ $vendor['status'] === 'Active' ? 'Deactivate' : 'Activate' }}</button>
+                                @else
+                                    <span class="text-[10px] text-slate-400">View only</span>
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -207,7 +228,7 @@
             <label class="text-xs font-medium text-slate-600 sm:col-span-2">Memo<input name="memo" maxlength="255" class="mt-1 h-9 w-full rounded-lg border border-slate-200 px-3 text-xs outline-none focus:border-blue-400"></label>
         </div><div class="border-y border-slate-100"><div class="flex items-center justify-between px-5 py-3"><div><h3 class="text-xs font-semibold text-slate-700">Bill allocations <span class="text-red-500">*</span></h3><span data-payment-error="allocations" class="mt-1 block text-[10px] text-red-600"></span></div><button id="ap-add-allocation" type="button" class="apm-outline-button"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add Bill</button></div><div class="overflow-x-auto"><table class="w-full min-w-[620px] text-xs"><thead class="bg-slate-50 text-[10px] text-slate-500 uppercase"><tr><th class="px-5 py-2 text-left">Open Bill</th><th class="px-3 py-2 text-right">Remaining</th><th class="w-40 px-3 py-2 text-left">Amount</th><th class="w-14"></th></tr></thead><tbody id="ap-allocation-rows"></tbody></table></div></div>
         <div class="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between"><p data-payment-message class="hidden rounded-lg px-3 py-2 text-xs" role="alert"></p><div class="ml-auto text-right"><p class="text-xs text-slate-500">Payment total</p><strong id="ap-payment-total" class="font-mono text-base text-slate-900">&#8369;0.00</strong></div></div>
-        <footer class="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/70 px-5 py-4"><button type="button" class="apm-outline-button" data-ap-close="payment">Cancel</button><button id="ap-payment-submit" type="submit" class="apm-primary-button" @disabled(! in_array($user['role'], ['Administrator', 'Accountant'], true) || $cashAccounts === [])><i class="fa-solid fa-check" aria-hidden="true"></i> Post Payment</button></footer></form>
+        <footer class="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/70 px-5 py-4"><button type="button" class="apm-outline-button" data-ap-close="payment">Cancel</button><button id="ap-payment-submit" type="submit" class="apm-primary-button" @disabled(! $demoCan('drafts.manage') || $cashAccounts === [])><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save Draft</button></footer></form>
     </section>
 </div>
 

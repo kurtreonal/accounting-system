@@ -12,8 +12,12 @@
         <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div><h1 class="text-xl font-bold text-slate-900">Sales</h1><p class="mt-1 text-sm text-slate-500">Revenue overview and sales performance</p></div>
             <div class="flex gap-2">
-                <button id="manage-customers-button" type="button" class="apm-outline-button"><i class="fa-solid fa-users" aria-hidden="true"></i>Add Customers</button>
-                <button id="new-invoice-button" type="button" class="apm-primary-button" @disabled($user['role'] === 'Viewer / Auditor') title="{{ $user['role'] === 'Viewer / Auditor' ? 'Viewer role has read-only access.' : 'Create sales invoice' }}"><i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i> New Invoice</button>
+                @if ($demoCan('master_data.manage'))
+                    <button id="manage-customers-button" type="button" class="apm-outline-button"><i class="fa-solid fa-users" aria-hidden="true"></i>Add Customers</button>
+                @endif
+                @if ($demoCan('drafts.manage'))
+                    <button id="new-invoice-button" type="button" class="apm-primary-button" title="Create sales invoice"><i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i> New Invoice</button>
+                @endif
             </div>
         </div>
     </div>
@@ -124,7 +128,7 @@
                     <label class="text-xs font-medium text-slate-600 sm:col-span-2">Billing address<textarea name="billing_address" rows="2" maxlength="300" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400 focus:ring-3 focus:ring-blue-100"></textarea></label>
                 </div>
                 <p data-form-message class="mt-3 hidden rounded-lg px-3 py-2 text-xs" role="alert"></p>
-                <div class="mt-4 flex justify-end"><button type="submit" class="apm-primary-button" @disabled($user['role'] === 'Viewer / Auditor')>Add Customer</button></div>
+                <div class="mt-4 flex justify-end"><button type="submit" class="apm-primary-button" @disabled(! $demoCan('master_data.manage'))>Add Customer</button></div>
             </form>
         </div>
     </section>

@@ -168,10 +168,19 @@ class AccountsPayableTest extends TestCase
             ],
         ];
 
-        $this->withSession($this->demoSession())->postJson('/accounts-payable/payments', $payload)
+        $created = $this->withSession($this->demoSession())->postJson('/accounts-payable/payments', $payload)
             ->assertCreated()
             ->assertJsonPath('payment.payment_number', 'VPY-2026-0001')
             ->assertJsonPath('payment.amount', 400)
+            ->assertJsonPath('payment.status', 'Draft');
+        $paymentNumber = $created->json('payment.payment_number');
+
+        $this->assertSame(0.0, (float) app(PurchaseDataService::class)->findBill($billNumber)['amount_paid']);
+        $this->withSession($this->demoSession('Encoder / Staff'))->postJson("/accounts-payable/payments/{$paymentNumber}/submit-review")
+            ->assertOk()->assertJsonPath('payment.status', 'For Review');
+        $this->withSession($this->demoSession())->postJson("/accounts-payable/payments/{$paymentNumber}/post", ['posting' => $payload['posting']])
+            ->assertOk()
+            ->assertJsonPath('payment.status', 'Posted')
             ->assertJsonPath('journal.status', 'Posted')
             ->assertJsonPath('journal.total_debit', 400)
             ->assertJsonPath('journal.total_credit', 400)
@@ -189,7 +198,7 @@ class AccountsPayableTest extends TestCase
 
         $this->withSession($this->demoSession())->postJson('/accounts-payable/payments', $payload)
             ->assertStatus(409)
-            ->assertJsonPath('message', 'This vendor payment request was already posted.');
+            ->assertJsonPath('message', 'This vendor payment request already exists.');
         $this->assertCount(1, json_decode(file_get_contents($this->paths['payments']), true, flags: JSON_THROW_ON_ERROR));
 
         $payload['request_token'] = (string) Str::uuid();
@@ -230,7 +239,7 @@ class AccountsPayableTest extends TestCase
         $firstBill = $this->createAndPostBill(300, 'SUP-2001');
         $secondBill = $this->createAndPostBill(700, 'SUP-2002');
 
-        $this->withSession($this->demoSession())->postJson('/accounts-payable/payments', [
+        $created = $this->withSession($this->demoSession())->postJson('/accounts-payable/payments', [
             'request_token' => (string) Str::uuid(),
             'vendor_id' => 1,
             'payment_date' => '2026-08-12',
@@ -243,6 +252,7 @@ class AccountsPayableTest extends TestCase
         ])->assertCreated()
             ->assertJsonPath('payment.amount', 750)
             ->assertJsonCount(2, 'payment.allocations');
+        $this->withSession($this->demoSession())->postJson('/accounts-payable/payments/'.$created->json('payment.payment_number').'/post')->assertOk();
 
         $this->assertSame(50.0, (float) app(PurchaseDataService::class)->findBill($firstBill)['remaining_balance']);
         $this->assertSame(200.0, (float) app(PurchaseDataService::class)->findBill($secondBill)['remaining_balance']);

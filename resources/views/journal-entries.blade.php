@@ -22,12 +22,12 @@
                 <h1 class="text-xl font-bold text-slate-900">Journal Entries</h1>
                 <p class="mt-1 text-sm text-slate-500">Record and manage all accounting transactions</p>
             </div>
-            <button id="new-journal-button" type="button" class="apm-primary-button self-start disabled:cursor-not-allowed disabled:opacity-50 print:hidden"
-                @disabled($user['role'] === 'Viewer / Auditor')
-                title="{{ $user['role'] === 'Viewer / Auditor' ? 'Viewer / Auditor has read-only access.' : 'Create journal entry' }}">
-                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
-                New Journal Entry
-            </button>
+            @if ($demoCan('drafts.manage'))
+                <button id="new-journal-button" type="button" class="apm-primary-button self-start print:hidden" title="Create journal entry">
+                    <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+                    New Journal Entry
+                </button>
+            @endif
         </div>
 
         <div id="journal-tabs" class="mt-5 flex gap-1 overflow-x-auto border-b border-slate-200 sm:gap-3 print:hidden" role="tablist" aria-label="Journal entry status filters">

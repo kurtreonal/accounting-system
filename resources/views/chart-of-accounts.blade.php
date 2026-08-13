@@ -10,7 +10,9 @@
         <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-xs text-slate-500"><span>Accounting</span><span class="text-slate-300">/</span><span class="font-medium text-slate-700">Chart of Accounts</span></nav>
         <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div><h1 class="text-xl font-bold text-slate-900">Chart of Accounts</h1><p class="mt-1 text-sm text-slate-500">Manage your accounting structure and account codes</p></div>
-            <button id="new-account-button" type="button" aria-haspopup="dialog" aria-controls="new-account-modal" class="apm-primary-button self-start"><span class="text-base leading-none" aria-hidden="true">+</span>New Account</button>
+            @if ($demoCan('configuration.manage'))
+                <button id="new-account-button" type="button" aria-haspopup="dialog" aria-controls="new-account-modal" class="apm-primary-button self-start"><span class="text-base leading-none" aria-hidden="true">+</span>New Account</button>
+            @endif
         </div>
     </div>
 

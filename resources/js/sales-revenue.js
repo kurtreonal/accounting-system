@@ -1,4 +1,5 @@
 import { createPosting, documentTotals } from './accounting-engine';
+import { can } from './demo-access';
 
 const setupSalesRevenue = () => {
     const page = document.querySelector('#sales-revenue-page');
@@ -15,6 +16,9 @@ const setupSalesRevenue = () => {
     const lineTemplate = document.querySelector('#invoice-line-template');
     const money = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
     const csrf = invoiceForm?.querySelector('input[name="_token"]')?.value || '';
+    const canManageMaster = can('master_data.manage');
+    const canManageDrafts = can('drafts.manage');
+    const canApprove = can('transactions.approve');
     let submitIntent = 'draft';
     let activeInvoice = null;
 
@@ -154,13 +158,14 @@ const setupSalesRevenue = () => {
         const printLink = document.querySelector('#invoice-view-print');
         printLink.href = endpoint(page.dataset.printUrlTemplate, invoice.invoice_number);
         const postButton = document.querySelector('#invoice-view-post');
-        const canPost = invoice.status === 'Draft' && ['Administrator', 'Accountant'].includes(page.dataset.userRole);
+        const canPost = invoice.status === 'Draft' && canApprove;
         postButton.classList.toggle('hidden', !canPost);
         openModal(viewModal);
     };
 
-    document.querySelector('#manage-customers-button')?.addEventListener('click', () => openModal(customerModal));
+    document.querySelector('#manage-customers-button')?.addEventListener('click', () => { if (canManageMaster) openModal(customerModal); });
     document.querySelector('#new-invoice-button')?.addEventListener('click', () => {
+        if (!canManageDrafts) return;
         if (data.customers.length === 0) {
             openModal(customerModal);
             showMessage(customerForm, 'Add an active customer before creating an invoice.');
@@ -245,7 +250,7 @@ const setupSalesRevenue = () => {
     });
 
     const requested = new URLSearchParams(window.location.search).get('new');
-    if (requested === 'invoice') document.querySelector('#new-invoice-button')?.click();
+    if (requested === 'invoice' && canManageDrafts) document.querySelector('#new-invoice-button')?.click();
     const requestedInvoice = new URLSearchParams(window.location.search).get('invoice');
     const invoice = data.invoices.find((item) => item.invoice_number === requestedInvoice);
     if (invoice) viewInvoice(invoice);

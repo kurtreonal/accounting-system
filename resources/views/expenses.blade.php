@@ -6,7 +6,7 @@
         <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-xs text-slate-500"><span>Accounting</span><span class="text-slate-300">/</span><span class="font-medium text-slate-700">Expenses</span></nav>
         <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div><h1 class="text-xl font-bold text-slate-900">Expenses</h1><p class="mt-1 text-xs text-slate-500">Record, review, and post business expenses with supporting receipts.</p></div>
-            @if ($user['role'] !== 'Viewer / Auditor')<button id="expense-new" type="button" class="apm-primary-button print:hidden"><i class="fa-solid fa-plus" aria-hidden="true"></i> New Expense</button>@endif
+            @if ($demoCan('drafts.manage'))<button id="expense-new" type="button" class="apm-primary-button print:hidden"><i class="fa-solid fa-plus" aria-hidden="true"></i> New Expense</button>@endif
         </div>
 
         <section class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Expense summary">

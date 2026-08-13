@@ -19,11 +19,7 @@
                 <h1 class="text-xl font-bold text-slate-900">Accounts Receivable</h1>
                 <p class="mt-1 text-sm text-slate-500">Manage customer invoices and incoming payments</p>
             </div>
-            @if ($user['role'] === 'Viewer / Auditor')
-                <button type="button" class="apm-primary-button" disabled title="Viewer role has read-only access.">
-                    <i class="fa-solid fa-plus" aria-hidden="true"></i> New Invoice
-                </button>
-            @else
+            @if ($demoCan('drafts.manage'))
                 <a href="{{ route('sales-revenue', ['new' => 'invoice']) }}" class="apm-primary-button">
                     <i class="fa-solid fa-plus" aria-hidden="true"></i> New Invoice
                 </a>
@@ -57,6 +53,7 @@
     <div class="mt-5 flex overflow-x-auto border-b border-slate-200 print:hidden" role="tablist" aria-label="Accounts Receivable sections">
         <button type="button" class="apm-tab border-blue-600 text-blue-600" data-ar-tab="invoices" role="tab" aria-selected="true">Invoices</button>
         <button type="button" class="apm-tab" data-ar-tab="customers" role="tab" aria-selected="false">Customers</button>
+        <button type="button" class="apm-tab" data-ar-tab="payments" role="tab" aria-selected="false">Payments</button>
         <button type="button" class="apm-tab" data-ar-tab="aging" role="tab" aria-selected="false">Aging Report</button>
     </div>
 
@@ -116,6 +113,18 @@
         </footer>
     </section>
 
+    <section data-ar-panel="payments" hidden class="dashboard-enter mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <header class="border-b border-slate-100 px-5 py-4"><h2 class="text-sm font-semibold text-slate-900">Customer Payments</h2><p class="mt-0.5 text-xs text-slate-500">Draft, review, and posted receipts</p></header>
+        <div class="overflow-x-auto"><table class="w-full min-w-[850px] text-left text-xs"><thead class="bg-slate-50 text-[10px] uppercase text-slate-500"><tr><th class="px-4 py-3">Receipt</th><th class="px-4 py-3">Date</th><th class="px-4 py-3">Customer</th><th class="px-4 py-3 text-right">Amount</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Journal</th><th class="px-4 py-3">Actions</th></tr></thead><tbody>
+            @forelse ($payments as $payment)<tr class="apm-table-row"><td class="apm-code">{{ $payment['receipt_number'] }}</td><td>{{ $payment['payment_date'] }}</td><td>{{ $payment['customer_name'] }}</td><td class="apm-money text-right">₱{{ number_format($payment['amount'], 2) }}</td><td>{{ $payment['status'] }}</td><td class="apm-code">{{ $payment['journal_entry_id'] ?? '—' }}</td><td class="apm-actions">
+                @if ($payment['status'] === 'Draft' && $demoCan('drafts.manage'))<button data-ar-edit-payment="{{ $payment['receipt_number'] }}">Edit</button><button data-ar-payment-action="delete" data-payment-number="{{ $payment['receipt_number'] }}">Delete</button>@endif
+                @if ($payment['status'] === 'Draft' && $demoCan('drafts.submit'))<button data-ar-payment-action="submit-review" data-payment-number="{{ $payment['receipt_number'] }}">Submit</button>@endif
+                @if ($payment['status'] === 'For Review' && $demoCan('transactions.approve'))<button data-ar-payment-action="return-draft" data-payment-number="{{ $payment['receipt_number'] }}">Return</button><button data-ar-payment-action="post" data-payment-number="{{ $payment['receipt_number'] }}">Post</button>@endif
+                @if ($payment['status'] === 'Posted')<span class="text-slate-400">Immutable</span>@endif
+            </td></tr>@empty<tr><td colspan="7" class="px-5 py-12 text-center text-slate-500">No customer payments.</td></tr>@endforelse
+        </tbody></table></div>
+    </section>
+
     <section data-ar-panel="customers" hidden class="dashboard-enter mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <header class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div>
@@ -166,7 +175,7 @@
         </article>
     </section>
 
-    <script id="ar-data" type="application/json">{!! Illuminate\Support\Js::encode(['invoices' => $invoices, 'customers' => $customers, 'cashAccounts' => $cashAccounts, 'accounts' => $postingAccounts]) !!}</script>
+    <script id="ar-data" type="application/json">{!! Illuminate\Support\Js::encode(['invoices' => $invoices, 'customers' => $customers, 'payments' => $payments, 'cashAccounts' => $cashAccounts, 'accounts' => $postingAccounts]) !!}</script>
 </main>
 
 <div id="ar-payment-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="ar-payment-title" aria-hidden="true">
@@ -221,7 +230,7 @@
             </div>
             <footer class="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/70 px-5 py-4">
                 <button type="button" class="apm-outline-button" data-ar-close>Cancel</button>
-                <button id="ar-payment-submit" type="submit" class="apm-primary-button" @disabled(! in_array($user['role'], ['Administrator', 'Accountant'], true) || $cashAccounts === [])><i class="fa-solid fa-check" aria-hidden="true"></i> Post Payment</button>
+                <button id="ar-payment-submit" type="submit" class="apm-primary-button" @disabled(! $demoCan('drafts.manage') || $cashAccounts === [])><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save Draft</button>
             </footer>
         </form>
     </section>

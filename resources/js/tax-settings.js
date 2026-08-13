@@ -1,10 +1,12 @@
+import { can } from './demo-access';
+
 const setupTaxSettings = () => {
     const page = document.querySelector('#tax-settings-page');
     if (!page) return;
 
     const initial = JSON.parse(document.querySelector('#tax-settings-data').textContent);
     const taxCodes = initial.taxCodes || [];
-    const canAdminister = page.dataset.userRole === 'Administrator';
+    const canAdminister = can('tax.manage');
     const money = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
     const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
     const form = document.querySelector('#tax-form');

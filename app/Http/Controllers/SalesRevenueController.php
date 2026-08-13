@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\Accounting\AccountingPostingService;
+use App\Services\DemoAccessService;
 use App\Services\DemoData\AccountDataService;
 use App\Services\DemoData\AuditLogDataService;
 use App\Services\DemoData\SalesDataService;
@@ -17,7 +18,7 @@ use RuntimeException;
 
 class SalesRevenueController extends Controller
 {
-    public function index(Request $request, SalesDataService $sales, AccountDataService $accounts, TaxCodeDataService $taxCodes): View|RedirectResponse
+    public function index(Request $request, SalesDataService $sales, AccountDataService $accounts, TaxCodeDataService $taxCodes, DemoAccessService $access): View|RedirectResponse
     {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
@@ -25,6 +26,9 @@ class SalesRevenueController extends Controller
 
         $customers = $sales->customers();
         $invoices = $sales->invoices();
+        if ($access->isViewer($request)) {
+            $invoices = array_values(array_filter($invoices, static fn (array $invoice): bool => $invoice['status'] !== 'Draft'));
+        }
         $posted = collect($invoices)->reject(fn (array $invoice): bool => $invoice['status'] === 'Draft');
         $year = now()->format('Y');
         $month = now()->format('Y-m');
@@ -209,7 +213,7 @@ class SalesRevenueController extends Controller
         return response()->json(['message' => 'Invoice posted and journal entry created.', 'invoice' => $invoice, 'journal' => $journal]);
     }
 
-    public function printInvoice(Request $request, string $invoiceNumber, SalesDataService $sales): View|RedirectResponse
+    public function printInvoice(Request $request, string $invoiceNumber, SalesDataService $sales, DemoAccessService $access): View|RedirectResponse
     {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
@@ -217,6 +221,9 @@ class SalesRevenueController extends Controller
 
         try {
             $invoice = $sales->findInvoice($invoiceNumber);
+            if ($access->isViewer($request) && $invoice['status'] === 'Draft') {
+                throw new RuntimeException('The sales invoice could not be found.');
+            }
         } catch (RuntimeException) {
             abort(404, 'The sales invoice could not be found.');
         }

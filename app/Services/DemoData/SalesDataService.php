@@ -120,10 +120,28 @@ class SalesDataService
     /** @return array<int, array<string, mixed>> */
     public function payments(): array
     {
-        $payments = $this->load($this->paymentsPath(), 'customer payments');
+        $payments = array_map($this->normalizePayment(...), $this->load($this->paymentsPath(), 'customer payments'));
         usort($payments, static fn (array $left, array $right): int => [$right['payment_date'], $right['receipt_number']] <=> [$left['payment_date'], $left['receipt_number']]);
 
         return $payments;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function postedPayments(): array
+    {
+        return array_values(array_filter($this->payments(), static fn (array $payment): bool => $payment['status'] === 'Posted'));
+    }
+
+    /** @return array<string, mixed> */
+    public function findPayment(string $receiptNumber): array
+    {
+        foreach ($this->payments() as $payment) {
+            if ($payment['receipt_number'] === $receiptNumber) {
+                return $payment;
+            }
+        }
+
+        throw new RuntimeException('The customer payment could not be found.');
     }
 
     /** @param array<string, mixed> $attributes
@@ -134,7 +152,7 @@ class SalesDataService
         return $this->mutate($this->paymentsPath(), 'customer payments', function (array &$payments) use ($attributes): array {
             foreach ($payments as $payment) {
                 if (($payment['request_token'] ?? null) === ($attributes['request_token'] ?? null)) {
-                    throw new RuntimeException('This payment request was already posted.');
+                    throw new RuntimeException('This payment request already exists.');
                 }
             }
 
@@ -143,12 +161,76 @@ class SalesDataService
                 'id' => $this->nextId($payments),
                 'receipt_number' => $this->nextReceiptNumber($payments, $attributes['payment_date']),
                 ...$attributes,
+                'status' => 'Draft',
+                'journal_entry_id' => null,
+                'submitted_by' => null,
+                'submitted_at' => null,
+                'posted_by' => null,
+                'posted_at' => null,
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
             $payments[] = $payment;
 
             return $payment;
+        });
+    }
+
+    /** @param array<string, mixed> $attributes
+     * @return array<string, mixed>
+     */
+    public function updatePayment(string $receiptNumber, array $attributes): array
+    {
+        return $this->mutate($this->paymentsPath(), 'customer payments', function (array &$payments) use ($receiptNumber, $attributes): array {
+            $index = $this->paymentIndex($payments, $receiptNumber);
+            $current = $this->normalizePayment($payments[$index]);
+            if ($current['status'] !== 'Draft') {
+                throw new RuntimeException('Only draft customer payments can be edited.');
+            }
+            $payments[$index] = [...$current, ...$attributes, 'receipt_number' => $receiptNumber, 'status' => 'Draft', 'updated_at' => now()->toIso8601String()];
+
+            return $payments[$index];
+        });
+    }
+
+    /** @return array<string, mixed> */
+    public function submitPaymentForReview(string $receiptNumber, array $actor): array
+    {
+        return $this->transitionPayment($receiptNumber, 'Draft', 'For Review', [
+            'submitted_by' => $this->actorSnapshot($actor),
+            'submitted_at' => now()->toIso8601String(),
+        ]);
+    }
+
+    /** @return array<string, mixed> */
+    public function returnPaymentToDraft(string $receiptNumber): array
+    {
+        return $this->transitionPayment($receiptNumber, 'For Review', 'Draft', ['submitted_by' => null, 'submitted_at' => null]);
+    }
+
+    /** @return array<string, mixed> */
+    public function markPaymentPosted(string $receiptNumber, string $journalNumber, array $actor): array
+    {
+        return $this->mutate($this->paymentsPath(), 'customer payments', function (array &$payments) use ($receiptNumber, $journalNumber, $actor): array {
+            $index = $this->paymentIndex($payments, $receiptNumber);
+            $payment = $this->normalizePayment($payments[$index]);
+            if (! in_array($payment['status'], ['Draft', 'For Review'], true)) {
+                throw new RuntimeException('Only draft or for-review customer payments can be posted.');
+            }
+            $payments[$index] = [...$payment, 'status' => 'Posted', 'journal_entry_id' => $journalNumber, 'posted_by' => $this->actorSnapshot($actor), 'posted_at' => now()->toIso8601String(), 'updated_at' => now()->toIso8601String()];
+
+            return $payments[$index];
+        });
+    }
+
+    public function deletePayment(string $receiptNumber): void
+    {
+        $this->mutate($this->paymentsPath(), 'customer payments', function (array &$payments) use ($receiptNumber): void {
+            $index = $this->paymentIndex($payments, $receiptNumber);
+            if ($this->normalizePayment($payments[$index])['status'] !== 'Draft') {
+                throw new RuntimeException('Only draft customer payments can be deleted.');
+            }
+            array_splice($payments, $index, 1);
         });
     }
 
@@ -259,6 +341,47 @@ class SalesDataService
         throw new RuntimeException('The sales invoice could not be found.');
     }
 
+    /** @param array<int, array<string, mixed>> $payments */
+    private function paymentIndex(array $payments, string $receiptNumber): int
+    {
+        foreach ($payments as $index => $payment) {
+            if (($payment['receipt_number'] ?? null) === $receiptNumber) {
+                return $index;
+            }
+        }
+
+        throw new RuntimeException('The customer payment could not be found.');
+    }
+
+    /** @return array<string, mixed> */
+    private function transitionPayment(string $receiptNumber, string $from, string $to, array $attributes): array
+    {
+        return $this->mutate($this->paymentsPath(), 'customer payments', function (array &$payments) use ($receiptNumber, $from, $to, $attributes): array {
+            $index = $this->paymentIndex($payments, $receiptNumber);
+            $payment = $this->normalizePayment($payments[$index]);
+            if ($payment['status'] !== $from) {
+                throw new RuntimeException("Only {$from} customer payments can move to {$to}.");
+            }
+            $payments[$index] = [...$payment, ...$attributes, 'status' => $to, 'updated_at' => now()->toIso8601String()];
+
+            return $payments[$index];
+        });
+    }
+
+    /** @param array<string, mixed> $payment
+     * @return array<string, mixed>
+     */
+    private function normalizePayment(array $payment): array
+    {
+        return [...$payment, 'status' => $payment['status'] ?? 'Posted'];
+    }
+
+    /** @return array{id: mixed, name: mixed} */
+    private function actorSnapshot(array $actor): array
+    {
+        return ['id' => $actor['id'] ?? null, 'name' => $actor['name'] ?? 'Demo User'];
+    }
+
     /** @param array<string, mixed> $invoice
      * @return array<string, mixed>
      */
@@ -284,7 +407,7 @@ class SalesDataService
     private function paymentTotals(): array
     {
         $totals = [];
-        foreach ($this->payments() as $payment) {
+        foreach ($this->postedPayments() as $payment) {
             foreach ($payment['allocations'] ?? [] as $allocation) {
                 $invoiceNumber = (string) ($allocation['invoice_number'] ?? '');
                 if ($invoiceNumber === '') {

@@ -7,6 +7,26 @@ use RuntimeException;
 
 class AuditLogDataService
 {
+    /** @return array<int, array<string, mixed>> */
+    public function all(): array
+    {
+        $path = (string) config('accounting.audit_logs_path');
+        if (! is_file($path)) {
+            return [];
+        }
+        try {
+            $logs = json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            throw new RuntimeException('The demo audit log JSON file is invalid.', previous: $exception);
+        }
+        if (! is_array($logs)) {
+            throw new RuntimeException('The demo audit log JSON file must contain an array.');
+        }
+        usort($logs, static fn (array $left, array $right): int => [$right['created_at'], $right['id']] <=> [$left['created_at'], $left['id']]);
+
+        return $logs;
+    }
+
     /** @param array<string, mixed> $actor */
     public function record(
         array $actor,

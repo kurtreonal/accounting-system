@@ -28,10 +28,16 @@
 </head>
 @php
     $currentUser = session('demo_user', ['name' => 'Demo User', 'role' => 'Viewer / Auditor']);
+    $demoPermissions = app(\App\Services\DemoAccessService::class)->permissionsForRole($currentUser['role'] ?? null);
+    $demoCan = fn (string $permission): bool => in_array('*', $demoPermissions, true) || in_array($permission, $demoPermissions, true);
     $userInitials = collect(preg_split('/\s+/', trim($currentUser['name'] ?? 'Demo User')))
         ->filter()->take(2)->map(fn ($part) => Str::upper(Str::substr($part, 0, 1)))->join('');
 @endphp
 <body class="min-h-screen bg-[#f2f6fa] font-sans text-slate-800 antialiased">
+    <script id="demo-access" type="application/json">{!! Illuminate\Support\Js::encode([
+        'role' => $currentUser['role'] ?? 'Viewer / Auditor',
+        'permissions' => $demoPermissions,
+    ]) !!}</script>
     <div id="app-shell" class="min-h-screen lg:pl-60 print:pl-0">
         <button id="sidebar-overlay" type="button" class="fixed inset-0 z-25 hidden cursor-default bg-slate-950/55 lg:hidden print:hidden" aria-label="Close navigation"></button>
         <aside id="app-sidebar" class="fixed inset-y-0 left-0 z-30 hidden h-dvh w-60 flex-col overflow-hidden bg-[#0f172a] text-slate-300 lg:flex print:hidden" aria-label="Primary navigation">
@@ -75,9 +81,15 @@
                 <a href="{{ route('financial-reports') }}" title="Financial Reports" @if ($activePage === 'financial-reports') aria-current="page" @endif class="apm-nav-item {{ $activePage === 'financial-reports' ? 'bg-blue-600 text-white shadow-md shadow-blue-950/20 hover:bg-blue-500' : '' }}"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-chart-pie" aria-hidden="true"></i><span class="apm-nav-label">Financial Reports</span></span><span class="apm-nav-badge {{ $activePage === 'financial-reports' ? 'rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white' : 'apm-full-badge' }}">FULL</span></a>
 
                 <p class="apm-nav-heading mt-4">Administration</p>
+                @if ($demoCan('tax.manage'))
                 <a href="{{ route('tax-settings') }}" title="Tax Settings" @if ($activePage === 'tax-settings') aria-current="page" @endif class="apm-nav-item {{ $activePage === 'tax-settings' ? 'bg-blue-600 text-white shadow-md shadow-blue-950/20 hover:bg-blue-500' : '' }}"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-percent" aria-hidden="true"></i><span class="apm-nav-label">Tax Settings</span></span><span class="apm-nav-badge {{ $activePage === 'tax-settings' ? 'rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white' : 'apm-full-badge' }}">FULL</span></a>
-                <button type="button" title="Audit Trail" class="apm-nav-item"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-clock-rotate-left" aria-hidden="true"></i><span class="apm-nav-label">Audit Trail</span></span><span class="apm-nav-badge apm-full-badge">FULL</span></button>
-                <button type="button" title="Users &amp; Settings" class="apm-nav-item"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-users-gear" aria-hidden="true"></i><span class="apm-nav-label">Users &amp; Settings</span></span><span class="apm-nav-badge apm-full-badge">FULL</span></button>
+                @endif
+                @if ($demoCan('audit.view'))
+                <a href="{{ route('audit-trail') }}" title="Audit Trail" @if ($activePage === 'audit-trail') aria-current="page" @endif class="apm-nav-item {{ $activePage === 'audit-trail' ? 'bg-blue-600 text-white' : '' }}"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-clock-rotate-left" aria-hidden="true"></i><span class="apm-nav-label">Audit Trail</span></span><span class="apm-nav-badge apm-full-badge">FULL</span></a>
+                @endif
+                @if ($demoCan('users.manage'))
+                <button type="button" disabled aria-disabled="true" title="Phase 2—not implemented" class="apm-nav-item cursor-not-allowed opacity-50"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-users-gear" aria-hidden="true"></i><span class="apm-nav-label">Users &amp; Settings</span></span><span class="apm-nav-badge apm-full-badge">PHASE 2</span></button>
+                @endif
             </nav>
 
             <div class="flex h-16 shrink-0 items-center border-t border-white/10 px-3">

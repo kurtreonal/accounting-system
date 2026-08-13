@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\Accounting\AccountingPostingService;
+use App\Services\DemoAccessService;
 use App\Services\DemoData\AccountDataService;
 use App\Services\DemoData\AuditLogDataService;
 use App\Services\DemoData\PurchaseDataService;
@@ -20,7 +21,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AccountsPayableController extends Controller
 {
-    public function index(Request $request, PurchaseDataService $purchases, AccountDataService $accounts, TaxCodeDataService $taxCodes): View|RedirectResponse
+    public function index(Request $request, PurchaseDataService $purchases, AccountDataService $accounts, TaxCodeDataService $taxCodes, DemoAccessService $access): View|RedirectResponse
     {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
@@ -28,6 +29,11 @@ class AccountsPayableController extends Controller
 
         $vendors = $purchases->vendors();
         $bills = $purchases->bills();
+        $payments = $purchases->payments();
+        if ($access->isViewer($request)) {
+            $bills = array_values(array_filter($bills, static fn (array $bill): bool => $bill['status'] !== 'Draft'));
+            $payments = array_values(array_filter($payments, static fn (array $payment): bool => $payment['status'] === 'Posted'));
+        }
         $today = now()->toDateString();
         $openBills = collect($bills)->filter(
             static fn (array $bill): bool => $bill['status'] !== 'Draft' && (float) $bill['remaining_balance'] > 0
@@ -38,7 +44,7 @@ class AccountsPayableController extends Controller
             'user' => $request->session()->get('demo_user'),
             'vendors' => $vendors,
             'bills' => $bills,
-            'payments' => $purchases->payments(),
+            'payments' => $payments,
             'cashAccounts' => $activeAccounts->filter(fn (array $account): bool => $this->isCashOrBank($account))->values()->all(),
             'purchaseAccounts' => $activeAccounts->filter(fn (array $account): bool => $this->isPurchaseAccount($account))->values()->all(),
             'postingAccounts' => $activeAccounts->values()->all(),
@@ -203,109 +209,94 @@ class AccountsPayableController extends Controller
         Request $request,
         PurchaseDataService $purchases,
         AccountDataService $accounts,
-        AccountingPostingService $posting,
         AuditLogDataService $auditLogs,
     ): JsonResponse {
-        if ($response = $this->denyApproval($request, 'post vendor payments')) {
-            return $response;
+        $prepared = $this->preparePayment($request->all(), $purchases, $accounts);
+        if ($prepared instanceof JsonResponse) {
+            return $prepared;
         }
-
-        $validator = Validator::make($request->all(), [
-            'request_token' => ['required', 'uuid'],
-            'vendor_id' => ['required', 'integer'],
-            'payment_date' => ['required', 'date_format:Y-m-d'],
-            'cash_account_code' => ['required', 'string'],
-            'reference' => ['nullable', 'string', 'max:50'],
-            'memo' => ['nullable', 'string', 'max:255'],
-            'allocations' => ['required', 'array', 'min:1'],
-            'allocations.*.bill_number' => ['required', 'string'],
-            'allocations.*.amount' => ['required', 'numeric', 'gt:0'],
-        ]);
-        if ($validator->fails()) {
-            return $this->validationError($validator->errors()->toArray(), 'Please correct payment fields.');
-        }
-
-        $validated = $validator->validated();
-        if (collect($purchases->payments())->contains('request_token', $validated['request_token'])) {
-            return response()->json(['message' => 'This vendor payment request was already posted.'], 409);
-        }
-
-        $vendor = collect($purchases->vendors())->first(
-            fn (array $item): bool => (int) $item['id'] === (int) $validated['vendor_id'] && $item['status'] === 'Active'
-        );
-        if (! $vendor) {
-            return $this->validationError(['vendor_id' => ['Select active vendor.']], 'Please correct payment fields.');
-        }
-
-        $activeAccounts = collect($accounts->all(['status' => 'Active']));
-        $cashAccount = $activeAccounts->first(
-            fn (array $account): bool => (string) $account['code'] === (string) $validated['cash_account_code'] && $this->isCashOrBank($account)
-        );
-        if (! $cashAccount) {
-            return $this->validationError(['cash_account_code' => ['Select active cash or bank account.']], 'Please correct payment fields.');
-        }
-
-        $bills = collect($purchases->bills())->keyBy('bill_number');
-        $seen = [];
-        $allocations = [];
-        $total = 0.0;
-        foreach ($validated['allocations'] as $index => $allocation) {
-            $billNumber = trim($allocation['bill_number']);
-            $amount = round((float) $allocation['amount'], 2);
-            $bill = $bills->get($billNumber);
-            if (! $bill || (int) $bill['vendor_id'] !== (int) $vendor['id']) {
-                return $this->validationError(["allocations.{$index}.bill_number" => ['Select open bill for this vendor.']], 'Please correct payment fields.');
-            }
-            if (isset($seen[$billNumber])) {
-                return $this->validationError(["allocations.{$index}.bill_number" => ['Allocate each bill only once.']], 'Please correct payment fields.');
-            }
-            if ($bill['status'] === 'Draft' || (float) $bill['remaining_balance'] <= 0) {
-                return $this->validationError(["allocations.{$index}.bill_number" => ['Bill is not open for payment.']], 'Please correct payment fields.');
-            }
-            if ($amount > (float) $bill['remaining_balance'] + 0.004) {
-                return $this->validationError(["allocations.{$index}.amount" => ['Payment cannot exceed bill remaining balance.']], 'Please correct payment fields.');
-            }
-
-            $seen[$billNumber] = true;
-            $total += $amount;
-            $allocations[] = ['bill_number' => $billNumber, 'bill_total' => (float) $bill['total'], 'amount' => $amount];
-        }
-        $total = round($total, 2);
-
         try {
-            $journal = $posting->postVendorPayment($vendor, [
-                ...$validated,
-                'amount' => $total,
-            ], $this->actor($request), $request->input('posting'));
-            $payment = $purchases->createPayment([
-                'request_token' => $validated['request_token'],
-                'payment_date' => $validated['payment_date'],
-                'vendor_id' => $vendor['id'],
-                'vendor_code' => $vendor['code'],
-                'vendor_name' => $vendor['name'],
-                'cash_account_code' => $cashAccount['code'],
-                'cash_account_name' => $cashAccount['name'],
-                'reference' => trim((string) ($validated['reference'] ?? '')),
-                'memo' => trim((string) ($validated['memo'] ?? '')),
-                'amount' => $total,
-                'allocations' => $allocations,
-                'journal_entry_id' => $journal['journal_number'],
-                'posted_by' => $this->actorSnapshot($request),
-            ]);
-            $auditLogs->record($this->actor($request), 'posted_vendor_payment', $payment['payment_number'], [
-                'journal_entry_id' => $journal['journal_number'],
-                'amount' => $total,
-                'allocations' => $allocations,
-            ], 'vendor_payment');
+            $payment = $purchases->createPayment([...$prepared, 'created_by' => $this->actorSnapshot($request)]);
+            $auditLogs->record($this->actor($request), 'created_draft', $payment['payment_number'], ['amount' => $payment['amount']], 'vendor_payment');
         } catch (RuntimeException $exception) {
             return $this->persistenceError($exception);
         }
 
-        return response()->json([
-            'message' => 'Vendor payment posted. Reference '.$payment['payment_number'].' created.',
-            'payment' => $payment,
-            'journal' => $journal,
-        ], 201);
+        return response()->json(['message' => 'Vendor payment draft created.', 'payment' => $payment], 201);
+    }
+
+    public function updatePayment(Request $request, string $paymentNumber, PurchaseDataService $purchases, AccountDataService $accounts, AuditLogDataService $auditLogs): JsonResponse
+    {
+        $prepared = $this->preparePayment($request->all(), $purchases, $accounts, $paymentNumber);
+        if ($prepared instanceof JsonResponse) {
+            return $prepared;
+        }
+        try {
+            $payment = $purchases->updatePayment($paymentNumber, $prepared);
+            $auditLogs->record($this->actor($request), 'updated_draft', $paymentNumber, ['amount' => $payment['amount']], 'vendor_payment');
+        } catch (RuntimeException $exception) {
+            return $this->persistenceError($exception);
+        }
+
+        return response()->json(['message' => 'Vendor payment draft updated.', 'payment' => $payment]);
+    }
+
+    public function deletePayment(Request $request, string $paymentNumber, PurchaseDataService $purchases, AuditLogDataService $auditLogs): JsonResponse
+    {
+        try {
+            $purchases->deletePayment($paymentNumber);
+            $auditLogs->record($this->actor($request), 'deleted_draft', $paymentNumber, [], 'vendor_payment');
+        } catch (RuntimeException $exception) {
+            return $this->persistenceError($exception);
+        }
+
+        return response()->json(['message' => 'Vendor payment draft deleted.']);
+    }
+
+    public function submitPaymentForReview(Request $request, string $paymentNumber, PurchaseDataService $purchases, AuditLogDataService $auditLogs): JsonResponse
+    {
+        try {
+            $payment = $purchases->submitPaymentForReview($paymentNumber, $this->actor($request));
+            $auditLogs->record($this->actor($request), 'submitted_for_review', $paymentNumber, [], 'vendor_payment');
+        } catch (RuntimeException $exception) {
+            return $this->persistenceError($exception);
+        }
+
+        return response()->json(['message' => 'Vendor payment submitted for review.', 'payment' => $payment]);
+    }
+
+    public function returnPaymentToDraft(Request $request, string $paymentNumber, PurchaseDataService $purchases, AuditLogDataService $auditLogs): JsonResponse
+    {
+        try {
+            $payment = $purchases->returnPaymentToDraft($paymentNumber);
+            $auditLogs->record($this->actor($request), 'returned_to_draft', $paymentNumber, [], 'vendor_payment');
+        } catch (RuntimeException $exception) {
+            return $this->persistenceError($exception);
+        }
+
+        return response()->json(['message' => 'Vendor payment returned to draft.', 'payment' => $payment]);
+    }
+
+    public function postPayment(Request $request, string $paymentNumber, PurchaseDataService $purchases, AccountDataService $accounts, AccountingPostingService $posting, AuditLogDataService $auditLogs): JsonResponse
+    {
+        try {
+            $saved = $purchases->findPayment($paymentNumber);
+            if (! in_array($saved['status'], ['Draft', 'For Review'], true)) {
+                throw new RuntimeException('Only draft or for-review vendor payments can be posted.');
+            }
+            $prepared = $this->preparePayment($saved, $purchases, $accounts, $paymentNumber);
+            if ($prepared instanceof JsonResponse) {
+                return $prepared;
+            }
+            $vendor = collect($purchases->vendors())->firstWhere('id', $prepared['vendor_id']);
+            $journal = $posting->postVendorPayment($vendor, $prepared, $this->actor($request), $request->input('posting'));
+            $payment = $purchases->markPaymentPosted($paymentNumber, $journal['journal_number'], $this->actor($request));
+            $auditLogs->record($this->actor($request), 'posted', $paymentNumber, ['journal_entry_id' => $journal['journal_number'], 'amount' => $payment['amount']], 'vendor_payment');
+        } catch (RuntimeException $exception) {
+            return $this->persistenceError($exception);
+        }
+
+        return response()->json(['message' => 'Vendor payment posted.', 'payment' => $payment, 'journal' => $journal]);
     }
 
     public function csv(Request $request, PurchaseDataService $purchases): StreamedResponse|RedirectResponse
@@ -359,13 +350,66 @@ class AccountsPayableController extends Controller
     {
         $search = Str::lower(trim((string) $request->query('search', '')));
         $status = trim((string) $request->query('status', ''));
+        $viewer = app(DemoAccessService::class)->isViewer($request);
 
-        return array_values(array_filter($purchases->bills(), static function (array $bill) use ($search, $status): bool {
+        return array_values(array_filter($purchases->bills(), static function (array $bill) use ($search, $status, $viewer): bool {
             $haystack = Str::lower(implode(' ', [$bill['bill_number'], $bill['vendor_name'], $bill['reference']]));
 
-            return ($search === '' || str_contains($haystack, $search))
+            return (! $viewer || $bill['status'] !== 'Draft')
+                && ($search === '' || str_contains($haystack, $search))
                 && ($status === '' || $bill['display_status'] === $status);
         }));
+    }
+
+    /** @return array<string, mixed>|JsonResponse */
+    private function preparePayment(array $input, PurchaseDataService $purchases, AccountDataService $accounts, ?string $exceptPayment = null): array|JsonResponse
+    {
+        $validator = Validator::make($input, [
+            'request_token' => ['required', 'uuid'], 'vendor_id' => ['required', 'integer'], 'payment_date' => ['required', 'date_format:Y-m-d'],
+            'cash_account_code' => ['required', 'string'], 'reference' => ['nullable', 'string', 'max:50'], 'memo' => ['nullable', 'string', 'max:255'],
+            'allocations' => ['required', 'array', 'min:1'], 'allocations.*.bill_number' => ['required', 'string'], 'allocations.*.amount' => ['required', 'numeric', 'gt:0'],
+        ]);
+        if ($validator->fails()) {
+            return $this->validationError($validator->errors()->toArray(), 'Please correct payment fields.');
+        }
+        $validated = $validator->validated();
+        if (collect($purchases->payments())->contains(fn (array $payment): bool => $payment['payment_number'] !== $exceptPayment && ($payment['request_token'] ?? null) === $validated['request_token'])) {
+            return response()->json(['message' => 'This vendor payment request already exists.'], 409);
+        }
+        $vendor = collect($purchases->vendors())->first(fn (array $item): bool => (int) $item['id'] === (int) $validated['vendor_id'] && $item['status'] === 'Active');
+        if (! $vendor) {
+            return $this->validationError(['vendor_id' => ['Select active vendor.']], 'Please correct payment fields.');
+        }
+        $cashAccount = collect($accounts->all(['status' => 'Active']))->first(fn (array $account): bool => (string) $account['code'] === (string) $validated['cash_account_code'] && $this->isCashOrBank($account));
+        if (! $cashAccount) {
+            return $this->validationError(['cash_account_code' => ['Select active cash or bank account.']], 'Please correct payment fields.');
+        }
+        $bills = collect($purchases->bills())->keyBy('bill_number');
+        $seen = [];
+        $allocations = [];
+        $total = 0.0;
+        foreach ($validated['allocations'] as $index => $allocation) {
+            $number = trim($allocation['bill_number']);
+            $amount = round((float) $allocation['amount'], 2);
+            $bill = $bills->get($number);
+            if (! $bill || (int) $bill['vendor_id'] !== (int) $vendor['id']) {
+                return $this->validationError(["allocations.{$index}.bill_number" => ['Select open bill for this vendor.']], 'Please correct payment fields.');
+            }
+            if (isset($seen[$number])) {
+                return $this->validationError(["allocations.{$index}.bill_number" => ['Allocate each bill only once.']], 'Please correct payment fields.');
+            }
+            if ($bill['status'] === 'Draft' || (float) $bill['remaining_balance'] <= 0) {
+                return $this->validationError(["allocations.{$index}.bill_number" => ['Bill is not open for payment.']], 'Please correct payment fields.');
+            }
+            if ($amount > (float) $bill['remaining_balance'] + 0.004) {
+                return $this->validationError(["allocations.{$index}.amount" => ['Payment cannot exceed bill remaining balance.']], 'Please correct payment fields.');
+            }
+            $seen[$number] = true;
+            $total += $amount;
+            $allocations[] = ['bill_number' => $number, 'bill_total' => (float) $bill['total'], 'amount' => $amount];
+        }
+
+        return ['request_token' => $validated['request_token'], 'payment_date' => $validated['payment_date'], 'vendor_id' => $vendor['id'], 'vendor_code' => $vendor['code'], 'vendor_name' => $vendor['name'], 'cash_account_code' => $cashAccount['code'], 'cash_account_name' => $cashAccount['name'], 'reference' => trim((string) ($validated['reference'] ?? '')), 'memo' => trim((string) ($validated['memo'] ?? '')), 'amount' => round($total, 2), 'allocations' => $allocations];
     }
 
     private function vendorValidator(Request $request): \Illuminate\Validation\Validator

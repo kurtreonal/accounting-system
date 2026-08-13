@@ -1,4 +1,5 @@
 import { journalTotals } from './accounting-engine';
+import { can } from './demo-access';
 
 const setupJournalEntries = () => {
     const page = document.querySelector('#journal-entries-page');
@@ -10,9 +11,8 @@ const setupJournalEntries = () => {
     if (!page || !dataElement || !modal || !form || !lineTemplate) return;
 
     const entries = JSON.parse(dataElement.textContent || '[]');
-    const userRole = page.dataset.userRole;
-    const canMutate = userRole !== 'Viewer / Auditor';
-    const canApprove = ['Administrator', 'Accountant'].includes(userRole);
+    const canMutate = can('drafts.manage');
+    const canApprove = can('transactions.approve');
     const csrfToken = form.querySelector('input[name="_token"]').value;
     const modalPanel = document.querySelector('#journal-modal-panel');
     const modalTitle = document.querySelector('#journal-modal-title');

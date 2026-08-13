@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\Accounting\AccountingPostingService;
+use App\Services\DemoAccessService;
 use App\Services\DemoData\AccountDataService;
 use App\Services\DemoData\AuditLogDataService;
 use App\Services\DemoData\CashBankDataService;
@@ -19,13 +20,16 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExpenseController extends Controller
 {
-    public function index(Request $request, ExpenseDataService $expenses, AccountDataService $accounts, TaxCodeDataService $taxCodes): View|RedirectResponse
+    public function index(Request $request, ExpenseDataService $expenses, AccountDataService $accounts, TaxCodeDataService $taxCodes, DemoAccessService $access): View|RedirectResponse
     {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
         }
         $active = collect($accounts->all(['status' => 'Active']));
         $records = collect($expenses->all())->sortByDesc(fn (array $row): string => $row['date'].'-'.$row['id'])->values()->all();
+        if ($access->isViewer($request)) {
+            $records = array_values(array_filter($records, static fn (array $row): bool => $row['status'] === 'Approved'));
+        }
 
         return view('expenses', [
             'user' => $request->session()->get('demo_user'),
@@ -168,12 +172,15 @@ class ExpenseController extends Controller
         return response()->json(['message' => 'Expense draft deleted.']);
     }
 
-    public function csv(Request $request, ExpenseDataService $expenses): StreamedResponse|RedirectResponse
+    public function csv(Request $request, ExpenseDataService $expenses, DemoAccessService $access): StreamedResponse|RedirectResponse
     {
         if (! $request->session()->has('demo_user')) {
             return redirect()->route('login');
         }
         $rows = $expenses->all();
+        if ($access->isViewer($request)) {
+            $rows = array_values(array_filter($rows, static fn (array $row): bool => $row['status'] === 'Approved'));
+        }
 
         return response()->streamDownload(function () use ($rows): void {
             $output = fopen('php://output', 'wb');

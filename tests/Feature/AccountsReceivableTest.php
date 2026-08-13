@@ -114,10 +114,19 @@ class AccountsReceivableTest extends TestCase
             ],
         ];
 
-        $this->withSession($this->demoSession())->postJson('/accounts-receivable/payments', $payload)
+        $created = $this->withSession($this->demoSession())->postJson('/accounts-receivable/payments', $payload)
             ->assertCreated()
             ->assertJsonPath('payment.receipt_number', 'RCP-2026-0001')
             ->assertJsonPath('payment.amount', 400)
+            ->assertJsonPath('payment.status', 'Draft');
+        $receiptNumber = $created->json('payment.receipt_number');
+
+        $this->assertSame(0.0, (float) app(SalesDataService::class)->findInvoice('INV-2026-0001')['amount_paid']);
+        $this->withSession($this->demoSession('Encoder / Staff'))->postJson("/accounts-receivable/payments/{$receiptNumber}/submit-review")
+            ->assertOk()->assertJsonPath('payment.status', 'For Review');
+        $this->withSession($this->demoSession())->postJson("/accounts-receivable/payments/{$receiptNumber}/post", ['posting' => $payload['posting']])
+            ->assertOk()
+            ->assertJsonPath('payment.status', 'Posted')
             ->assertJsonPath('journal.status', 'Posted')
             ->assertJsonPath('journal.total_debit', 400)
             ->assertJsonPath('journal.total_credit', 400)
@@ -135,13 +144,13 @@ class AccountsReceivableTest extends TestCase
 
         $this->withSession($this->demoSession())->postJson('/accounts-receivable/payments', $payload)
             ->assertStatus(409)
-            ->assertJsonPath('message', 'This payment request was already posted.');
+            ->assertJsonPath('message', 'This payment request already exists.');
         $this->assertCount(1, json_decode(file_get_contents($this->paths['payments']), true, flags: JSON_THROW_ON_ERROR));
     }
 
     public function test_full_payment_marks_invoice_paid_with_zero_balance(): void
     {
-        $this->withSession($this->demoSession())->postJson('/accounts-receivable/payments', [
+        $created = $this->withSession($this->demoSession())->postJson('/accounts-receivable/payments', [
             'request_token' => (string) Str::uuid(),
             'customer_id' => 1,
             'payment_date' => '2026-08-11',
@@ -149,6 +158,7 @@ class AccountsReceivableTest extends TestCase
             'reference' => 'DEP-FULL',
             'allocations' => [['invoice_number' => 'INV-2026-0001', 'amount' => 1000]],
         ])->assertCreated();
+        $this->withSession($this->demoSession())->postJson('/accounts-receivable/payments/'.$created->json('payment.receipt_number').'/post')->assertOk();
 
         $invoice = app(SalesDataService::class)->findInvoice('INV-2026-0001');
         $this->assertSame(1000.0, (float) $invoice['amount_paid']);
@@ -179,6 +189,52 @@ class AccountsReceivableTest extends TestCase
         $this->assertSame(800.0, (float) $accounts[1]['balance']);
     }
 
+    public function test_payment_review_return_and_posted_immutability_are_enforced(): void
+    {
+        $payload = [
+            'request_token' => (string) Str::uuid(),
+            'customer_id' => 1,
+            'payment_date' => '2026-08-11',
+            'cash_account_code' => '1000',
+            'reference' => 'WORKFLOW-1',
+            'allocations' => [['invoice_number' => 'INV-2026-0001', 'amount' => 250]],
+        ];
+        $created = $this->withSession($this->demoSession('Encoder / Staff'))->postJson('/accounts-receivable/payments', $payload)
+            ->assertCreated()->assertJsonPath('payment.status', 'Draft');
+        $number = $created->json('payment.receipt_number');
+
+        $this->withSession($this->demoSession('Encoder / Staff'))->postJson("/accounts-receivable/payments/{$number}/submit-review")
+            ->assertOk()->assertJsonPath('payment.status', 'For Review');
+        $this->withSession($this->demoSession())->postJson("/accounts-receivable/payments/{$number}/return-draft")
+            ->assertOk()->assertJsonPath('payment.status', 'Draft');
+        $this->withSession($this->demoSession('Encoder / Staff'))->putJson("/accounts-receivable/payments/{$number}", [...$payload, 'memo' => 'Edited draft'])
+            ->assertOk()->assertJsonPath('payment.memo', 'Edited draft');
+        $this->withSession($this->demoSession())->postJson("/accounts-receivable/payments/{$number}/post")
+            ->assertOk()->assertJsonPath('payment.status', 'Posted');
+
+        $this->withSession($this->demoSession())->putJson("/accounts-receivable/payments/{$number}", $payload)->assertStatus(409);
+        $this->withSession($this->demoSession())->deleteJson("/accounts-receivable/payments/{$number}")->assertStatus(409);
+        $this->withSession($this->demoSession())->postJson("/accounts-receivable/payments/{$number}/post")->assertStatus(409);
+    }
+
+    public function test_posting_rejects_stale_draft_allocations_without_creating_an_extra_journal(): void
+    {
+        $first = $this->withSession($this->demoSession())->postJson('/accounts-receivable/payments', [
+            'request_token' => (string) Str::uuid(), 'customer_id' => 1, 'payment_date' => '2026-08-11', 'cash_account_code' => '1000',
+            'allocations' => [['invoice_number' => 'INV-2026-0001', 'amount' => 600]],
+        ])->assertCreated()->json('payment.receipt_number');
+        $second = $this->withSession($this->demoSession())->postJson('/accounts-receivable/payments', [
+            'request_token' => (string) Str::uuid(), 'customer_id' => 1, 'payment_date' => '2026-08-11', 'cash_account_code' => '1000',
+            'allocations' => [['invoice_number' => 'INV-2026-0001', 'amount' => 500]],
+        ])->assertCreated()->json('payment.receipt_number');
+
+        $this->withSession($this->demoSession())->postJson("/accounts-receivable/payments/{$second}/post")->assertOk();
+        $before = count(json_decode(file_get_contents($this->paths['journals']), true, flags: JSON_THROW_ON_ERROR));
+        $response = $this->withSession($this->demoSession())->postJson("/accounts-receivable/payments/{$first}/post")->assertUnprocessable();
+        $this->assertSame('Payment cannot exceed invoice remaining balance.', $response->json('errors')['allocations.0.amount'][0]);
+        $this->assertCount($before, json_decode(file_get_contents($this->paths['journals']), true, flags: JSON_THROW_ON_ERROR));
+    }
+
     public function test_overpayment_and_roles_are_blocked_and_csv_exports_current_balance(): void
     {
         $payload = [
@@ -195,7 +251,7 @@ class AccountsReceivableTest extends TestCase
             'Payment cannot exceed invoice remaining balance.',
             $response->json('errors')['allocations.0.amount'][0],
         );
-        $this->withSession($this->demoSession('Encoder / Staff'))->postJson('/accounts-receivable/payments', $payload)->assertForbidden();
+        $this->withSession($this->demoSession('Encoder / Staff'))->postJson('/accounts-receivable/payments', $payload)->assertUnprocessable();
         $this->withSession($this->demoSession('Viewer / Auditor'))->postJson('/accounts-receivable/payments', $payload)->assertForbidden();
 
         $csv = $this->withSession($this->demoSession())->get('/accounts-receivable/export/csv')->streamedContent();

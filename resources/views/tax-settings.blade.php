@@ -6,7 +6,7 @@
         <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-xs text-slate-500 print:hidden"><span>Administration</span><span class="text-slate-300">/</span><span class="font-medium text-slate-700">Tax / VAT Settings</span></nav>
         <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between print:hidden">
             <div><h1 class="text-xl font-bold text-slate-900">Tax / VAT Settings</h1><p class="mt-1 text-xs text-slate-500">Manage demo tax codes, default VAT rates, and posted tax activity.</p></div>
-            @if($user['role'] === 'Administrator')<button id="tax-add" type="button" class="apm-primary-button"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add Tax Rate</button>@endif
+            @if($demoCan('tax.manage'))<button id="tax-add" type="button" class="apm-primary-button"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add Tax Rate</button>@endif
         </div>
 
         <div class="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 print:hidden"><i class="fa-solid fa-triangle-exclamation mt-0.5" aria-hidden="true"></i><p><strong>Demonstration configuration only.</strong> These rates simulate accounting workflows and are not tax or regulatory advice. Historical posted transactions retain their original amounts when settings change.</p></div>

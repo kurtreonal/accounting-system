@@ -1,3 +1,5 @@
+import { can } from './demo-access';
+
 const setupCashBank = () => {
     const page = document.querySelector('#cash-bank-page');
     if (!page) return;
@@ -8,7 +10,7 @@ const setupCashBank = () => {
     const postingAccounts = data.postingAccounts || [];
     const transactions = data.transactions || [];
     const reconciliations = data.reconciliations || [];
-    const canManage = ['Administrator', 'Accountant'].includes(page.dataset.userRole);
+    const canManage = can('cash_bank.manage');
     const money = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
     const pageSize = 8;
     let transactionPage = 1;

@@ -5,6 +5,8 @@ import './general-ledger';
 import './sales-revenue';
 import './accounts-receivable';
 import './accounts-payable';
+import './cash-bank';
+import './expenses';
 
 const setupSidebarToggle = () => {
     const button = document.querySelector('#sidebar-toggle');

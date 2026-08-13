@@ -10,4 +10,7 @@ return [
     'vendors_path' => storage_path('demo-data/vendors.json'),
     'bills_path' => storage_path('demo-data/bills.json'),
     'vendor_payments_path' => storage_path('demo-data/vendor_payments.json'),
+    'bank_transactions_path' => storage_path('demo-data/bank_transactions.json'),
+    'bank_reconciliations_path' => storage_path('demo-data/bank_reconciliations.json'),
+    'expenses_path' => storage_path('demo-data/expenses.json'),
 ];

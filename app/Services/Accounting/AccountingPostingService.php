@@ -167,6 +167,104 @@ class AccountingPostingService
         );
     }
 
+    /** @param array<string, mixed> $transaction
+     * @param  array<string, mixed>  $actor
+     * @return array<string, mixed>
+     */
+    public function postCashBankTransaction(array $transaction, array $actor): array
+    {
+        $accounts = $this->activeAccounts();
+        $type = (string) $transaction['type'];
+        $amount = $this->money($transaction['amount']);
+        $reference = trim((string) ($transaction['reference'] ?? '')) ?: ucfirst(str_replace('_', ' ', $type));
+        $description = trim((string) ($transaction['description'] ?? '')) ?: $reference;
+
+        if ($type === 'transfer') {
+            $from = $this->accountByCode($accounts, (string) $transaction['from_account_code']);
+            $to = $this->accountByCode($accounts, (string) $transaction['to_account_code']);
+            if (! $this->isCashOrBank($from) || ! $this->isCashOrBank($to) || $from['code'] === $to['code']) {
+                throw new RuntimeException('Transfer requires two different active cash or bank accounts.');
+            }
+            $lines = [
+                $this->line($to, 'Transfer received - '.$description, '', $amount, 0),
+                $this->line($from, 'Transfer sent - '.$description, '', 0, $amount),
+            ];
+        } else {
+            $cash = $this->accountByCode($accounts, (string) $transaction['account_code']);
+            $offset = $this->accountByCode($accounts, (string) $transaction['offset_account_code']);
+            if (! $this->isCashOrBank($cash) || $cash['code'] === $offset['code']) {
+                throw new RuntimeException('Select a valid cash account and a different offset account.');
+            }
+            $inflow = in_array($type, ['deposit', 'interest'], true);
+            $lines = $inflow
+                ? [$this->line($cash, $description, '', $amount, 0), $this->line($offset, $description, '', 0, $amount)]
+                : [$this->line($offset, $description, '', $amount, 0), $this->line($cash, $description, '', 0, $amount)];
+        }
+
+        return $this->postSource(
+            'cash-bank:'.$transaction['request_token'],
+            [
+                'date' => $transaction['date'],
+                'reference' => $reference,
+                'description' => $description,
+                'source_type' => $type === 'transfer' ? 'Bank Transfer' : 'Cash/Bank',
+                'lines' => $lines,
+            ],
+            $actor,
+            null,
+            ['request_token' => $transaction['request_token'], 'cash_bank_type' => $type],
+        );
+    }
+
+    /** @param array<string, mixed> $expense
+     * @param  array<string, mixed>  $actor
+     * @return array<string, mixed>
+     */
+    public function postExpense(array $expense, array $actor): array
+    {
+        $accounts = $this->activeAccounts();
+        $category = $this->accountByCode($accounts, (string) $expense['category_account_code']);
+        if ($category['type'] !== 'Expense') {
+            throw new RuntimeException('Select an active expense account.');
+        }
+
+        $lines = [$this->line($category, (string) $expense['memo'], (string) $expense['payee'], (float) $expense['subtotal'], 0)];
+        if ((float) $expense['tax'] > 0) {
+            $inputTax = $this->findAccount($accounts, fn (array $account): bool => $this->nameContains($account, 'input tax'), false);
+            if ($inputTax === null) {
+                throw new RuntimeException('Posting a taxed expense needs an active Input Tax account.');
+            }
+            $lines[] = $this->line($inputTax, 'Input tax '.$expense['expense_number'], (string) $expense['payee'], (float) $expense['tax'], 0);
+        }
+
+        if ($expense['payment_status'] === 'Paid') {
+            $creditAccount = $this->accountByCode($accounts, (string) $expense['cash_account_code']);
+            if (! $this->isCashOrBank($creditAccount)) {
+                throw new RuntimeException('Paid expenses require an active cash or bank account.');
+            }
+            if ((float) $creditAccount['balance'] < (float) $expense['total']) {
+                throw new RuntimeException('Expense total exceeds the available cash or bank balance.');
+            }
+        } else {
+            $creditAccount = $this->findAccount($accounts, fn (array $account): bool => $account['type'] === 'Liability' && $this->nameContains($account, 'payable') && ! $this->nameContains($account, 'tax'));
+        }
+        $lines[] = $this->line($creditAccount, 'Payment for '.$expense['expense_number'], (string) $expense['payee'], 0, (float) $expense['total']);
+
+        return $this->postSource(
+            'expense:'.$expense['expense_number'],
+            [
+                'date' => $expense['date'],
+                'reference' => $expense['expense_number'],
+                'description' => 'Expense '.$expense['expense_number'].' - '.$expense['payee'],
+                'source_type' => 'Expense',
+                'lines' => $lines,
+            ],
+            $actor,
+            null,
+            ['expense_number' => $expense['expense_number']],
+        );
+    }
+
     /** @param array<string, mixed> $actor
      * @return array<string, mixed>
      */

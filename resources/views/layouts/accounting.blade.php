@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0f172a">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $pageTitle }} | APM Accounting</title>
     <script>
         (() => {
@@ -67,8 +68,8 @@
                 <a href="{{ route('accounts-payable') }}" title="Accounts Payable" @if ($activePage === 'accounts-payable') aria-current="page" @endif class="apm-nav-item {{ $activePage === 'accounts-payable' ? 'bg-blue-600 text-white shadow-md shadow-blue-950/20 hover:bg-blue-500' : '' }}"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-money-check-dollar" aria-hidden="true"></i><span class="apm-nav-label">Accounts Payable</span></span><span class="apm-nav-badge {{ $activePage === 'accounts-payable' ? 'rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white' : 'apm-full-badge' }}">FULL</span></a>
 
                 <p class="apm-nav-heading mt-4">Banking</p>
-                <button type="button" title="Cash &amp; Bank" class="apm-nav-item"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-building-columns" aria-hidden="true"></i><span class="apm-nav-label">Cash &amp; Bank</span></span><span class="apm-nav-badge apm-full-badge">FULL</span></button>
-                <button type="button" title="Expenses" class="apm-nav-item"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-wallet" aria-hidden="true"></i><span class="apm-nav-label">Expenses</span></span><span class="apm-nav-badge apm-full-badge">FULL</span></button>
+                <a href="{{ route('cash-bank') }}" title="Cash &amp; Bank" @if ($activePage === 'cash-bank') aria-current="page" @endif class="apm-nav-item {{ $activePage === 'cash-bank' ? 'bg-blue-600 text-white shadow-md shadow-blue-950/20 hover:bg-blue-500' : '' }}"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-building-columns" aria-hidden="true"></i><span class="apm-nav-label">Cash &amp; Bank</span></span><span class="apm-nav-badge {{ $activePage === 'cash-bank' ? 'rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white' : 'apm-full-badge' }}">FULL</span></a>
+                <a href="{{ route('expenses') }}" title="Expenses" @if ($activePage === 'expenses') aria-current="page" @endif class="apm-nav-item {{ $activePage === 'expenses' ? 'bg-blue-600 text-white shadow-md shadow-blue-950/20 hover:bg-blue-500' : '' }}"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-wallet" aria-hidden="true"></i><span class="apm-nav-label">Expenses</span></span><span class="apm-nav-badge {{ $activePage === 'expenses' ? 'rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white' : 'apm-full-badge' }}">FULL</span></a>
 
                 <p class="apm-nav-heading mt-4">Reporting</p>
                 <button type="button" title="Financial Reports" class="apm-nav-item"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-chart-pie" aria-hidden="true"></i><span class="apm-nav-label">Financial Reports</span></span><span class="apm-nav-badge apm-full-badge">FULL</span></button>

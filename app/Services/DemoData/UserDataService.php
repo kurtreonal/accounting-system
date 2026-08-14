@@ -33,6 +33,7 @@ class UserDataService
                 'id' => (int) collect($rows)->max('id') + 1,
                 ...$attributes,
                 'password_hash' => password_hash($attributes['password'], PASSWORD_BCRYPT),
+                'avatar_data_url' => null,
                 'active' => true,
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
@@ -73,6 +74,18 @@ class UserDataService
             $index = $this->index($rows, $id);
             $rows[$index]['password_hash'] = password_hash($password, PASSWORD_BCRYPT);
             $rows[$index]['updated_at'] = now()->toIso8601String();
+        });
+    }
+
+    /** @return array<string, mixed> */
+    public function updateAvatar(int $id, ?string $avatarDataUrl): array
+    {
+        return $this->mutate(function (array &$rows) use ($id, $avatarDataUrl): array {
+            $index = $this->index($rows, $id);
+            $rows[$index]['avatar_data_url'] = $avatarDataUrl;
+            $rows[$index]['updated_at'] = now()->toIso8601String();
+
+            return $rows[$index];
         });
     }
 

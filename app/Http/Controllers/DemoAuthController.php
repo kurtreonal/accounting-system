@@ -6,6 +6,7 @@ use App\Services\Accounting\DashboardDataService;
 use App\Services\DemoData\AccountDataService;
 use App\Services\DemoData\UserDataService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use JsonException;
@@ -51,6 +52,7 @@ class DemoAuthController extends Controller
             'name' => $user['name'],
             'email' => $user['email'],
             'role' => $user['role'],
+            'avatar_data_url' => $user['avatar_data_url'] ?? null,
         ]);
 
         return redirect()->route('dashboard');
@@ -81,9 +83,44 @@ class DemoAuthController extends Controller
             'name' => $user['name'],
             'email' => $user['email'],
             'role' => $user['role'],
+            'avatar_data_url' => $user['avatar_data_url'] ?? null,
         ]);
 
         return redirect()->route('dashboard')->with('demo_user_switched', "Now demonstrating {$user['role']} access as {$user['name']}.");
+    }
+
+    public function updateAvatar(Request $request, UserDataService $users): JsonResponse
+    {
+        if (! $request->session()->has('demo_user')) {
+            return response()->json(['message' => 'Authentication is required.'], 401);
+        }
+
+        $validated = $request->validate([
+            'avatar_data_url' => ['nullable', 'string', 'max:200000'],
+        ]);
+        $avatar = $validated['avatar_data_url'] ?? null;
+
+        if ($avatar !== null) {
+            if (! preg_match('/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+\/=]+)$/', $avatar, $matches)) {
+                return response()->json(['message' => 'The profile picture format is invalid.'], 422);
+            }
+
+            $binary = base64_decode($matches[2], true);
+            $dimensions = $binary === false ? false : @getimagesizefromstring($binary);
+            $expectedMime = 'image/'.$matches[1];
+            if ($binary === false || strlen($binary) > 150000 || $dimensions === false || ($dimensions['mime'] ?? '') !== $expectedMime || $dimensions[0] !== 256 || $dimensions[1] !== 256) {
+                return response()->json(['message' => 'The profile picture must be a valid 256 × 256 image under 150 KB.'], 422);
+            }
+        }
+
+        $user = $users->updateAvatar((int) $request->session()->get('demo_user.id'), $avatar);
+        $sessionUser = (array) $request->session()->get('demo_user');
+        $request->session()->put('demo_user', [...$sessionUser, 'avatar_data_url' => $user['avatar_data_url'] ?? null]);
+
+        return response()->json([
+            'message' => $avatar === null ? 'Profile picture removed.' : 'Profile picture updated.',
+            'avatar_data_url' => $user['avatar_data_url'] ?? null,
+        ]);
     }
 
     public function dashboard(Request $request, DashboardDataService $dashboard): View|RedirectResponse

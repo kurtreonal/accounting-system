@@ -23,6 +23,7 @@ Route::redirect('/', '/login');
 Route::get('/login', [DemoAuthController::class, 'show'])->name('login');
 Route::post('/login', [DemoAuthController::class, 'login'])->name('login.attempt');
 Route::post('/demo-user/switch', [DemoAuthController::class, 'switchUser'])->name('demo-user.switch');
+Route::post('/profile/avatar', [DemoAuthController::class, 'updateAvatar'])->name('profile.avatar.update');
 Route::get('/dashboard', [DemoAuthController::class, 'dashboard'])->name('dashboard');
 Route::get('/record-details/{resource}/{identifier}', [RecordDetailController::class, 'show'])->middleware('demo.permission:posted_records.view')->name('record-details.show');
 Route::get('/chart-of-accounts', [DemoAuthController::class, 'chartOfAccounts'])->name('chart-of-accounts');

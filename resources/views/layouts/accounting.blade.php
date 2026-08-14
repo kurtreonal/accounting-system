@@ -30,8 +30,6 @@
     $currentUser = session('demo_user', ['name' => 'Demo User', 'role' => 'Viewer / Auditor']);
     $demoPermissions = app(\App\Services\DemoAccessService::class)->permissionsForRole($currentUser['role'] ?? null);
     $demoCan = fn (string $permission): bool => in_array('*', $demoPermissions, true) || in_array($permission, $demoPermissions, true);
-    $userInitials = collect(preg_split('/\s+/', trim($currentUser['name'] ?? 'Demo User')))
-        ->filter()->take(2)->map(fn ($part) => Str::upper(Str::substr($part, 0, 1)))->join('');
     $demoRoleLabels = [
         'Administrator' => 'Administrator',
         'Accountant' => 'Accountant',
@@ -102,7 +100,7 @@
 
             <div class="flex h-16 shrink-0 items-center border-t border-white/10 px-3">
                 <button type="button" class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg p-1 text-left transition-colors duration-150 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-400/70" data-profile-toggle aria-haspopup="menu" aria-expanded="false" title="Open profile menu">
-                    <span class="grid size-7 shrink-0 place-items-center rounded-full bg-red-600 text-[10px] font-bold text-white">{{ $userInitials }}</span>
+                    <x-demo-avatar :user="$currentUser" class="size-7 bg-red-600 text-[10px] text-white" />
                     <div class="apm-sidebar-label min-w-0"><p class="truncate text-[11px] font-medium text-white">{{ $currentUser['name'] }}</p><span class="inline-block rounded-full bg-red-100 px-1.5 py-0.5 text-[8px] font-bold text-red-600">{{ $currentUser['role'] }}</span></div>
                     <i class="apm-sidebar-label fa-solid fa-chevron-up ml-auto text-[9px] text-slate-500" aria-hidden="true"></i>
                 </button>
@@ -127,7 +125,7 @@
                     <svg class="theme-icon-moon size-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 15.75A9.75 9.75 0 0 1 8.25 2.25a9.75 9.75 0 1 0 13.5 13.5Z"/></svg>
                     <svg class="theme-icon-sun size-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="3.75"/><path stroke-linecap="round" d="M12 2.25v2.1M12 19.65v2.1M21.75 12h-2.1M4.35 12h-2.1M18.9 5.1l-1.48 1.48M6.58 17.42 5.1 18.9M18.9 18.9l-1.48-1.48M6.58 6.58 5.1 5.1"/></svg>
                 </button>
-                <button type="button" class="grid size-8 cursor-pointer place-items-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-sm transition hover:bg-red-500 focus:outline-none focus:ring-3 focus:ring-red-200" data-profile-toggle aria-label="Open profile menu for {{ $currentUser['name'] }}" aria-haspopup="menu" aria-expanded="false" title="Open profile menu">{{ $userInitials }}</button>
+                <button type="button" class="grid size-8 cursor-pointer place-items-center overflow-hidden rounded-full bg-red-600 text-[10px] text-white shadow-sm transition hover:bg-red-500 focus:outline-none focus:ring-3 focus:ring-red-200" data-profile-toggle aria-label="Open profile menu for {{ $currentUser['name'] }}" aria-haspopup="menu" aria-expanded="false" title="Open profile menu"><x-demo-avatar :user="$currentUser" class="size-full bg-red-600 text-white" /></button>
             </div>
         </header>
 
@@ -140,14 +138,12 @@
                 @foreach ($demoUsers as $demoUser)
                     @php
                         $isCurrentDemoUser = (int) ($currentUser['id'] ?? 0) === (int) $demoUser['id'];
-                        $demoInitials = collect(preg_split('/\s+/', trim($demoUser['name'] ?? 'Demo User')))
-                            ->filter()->take(2)->map(fn ($part) => Str::upper(Str::substr($part, 0, 1)))->join('');
                     @endphp
                     <form method="POST" action="{{ route('demo-user.switch') }}" data-demo-user-form>
                         @csrf
                         <input type="hidden" name="user_id" value="{{ $demoUser['id'] }}">
                         <button type="submit" role="menuitemradio" aria-checked="{{ $isCurrentDemoUser ? 'true' : 'false' }}" @disabled($isCurrentDemoUser) class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-blue-50 focus:bg-blue-50 focus:outline-none disabled:cursor-default disabled:bg-slate-100 dark:hover:bg-slate-800 dark:focus:bg-slate-800 dark:disabled:bg-slate-800/70">
-                            <span class="grid size-8 shrink-0 place-items-center rounded-full {{ $isCurrentDemoUser ? 'bg-blue-600' : 'bg-slate-600' }} text-[10px] font-bold text-white">{{ $demoInitials }}</span>
+                            <x-demo-avatar :user="$demoUser" class="size-8 {{ $isCurrentDemoUser ? 'bg-blue-600' : 'bg-slate-600' }} text-[10px] text-white" />
                             <span class="min-w-0 flex-1">
                                 <span class="block text-xs font-semibold text-slate-800 dark:text-slate-100">{{ $demoRoleLabels[$demoUser['role']] }}</span>
                                 <span class="block truncate text-[10px] text-slate-500 dark:text-slate-400">{{ $demoUser['name'] }}</span>
@@ -162,20 +158,53 @@
             <p class="border-t border-amber-100 bg-amber-50 px-4 py-2.5 text-[10px] leading-4 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">Demo access control only — not production authentication.</p>
         </div>
 
-        <div id="profile-menu" class="fixed z-50 hidden w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl print:hidden" role="menu" aria-hidden="true">
+        <div id="profile-menu" class="fixed z-50 hidden w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl print:hidden dark:border-slate-700 dark:bg-slate-900" role="menu" aria-hidden="true">
             <div class="border-b border-slate-100 px-4 py-3">
                 <div class="flex items-center gap-3">
-                    <span class="grid size-9 shrink-0 place-items-center rounded-full bg-red-600 text-[11px] font-bold text-white">{{ $userInitials }}</span>
+                    <x-demo-avatar :user="$currentUser" class="size-9 bg-red-600 text-[11px] text-white" />
                     <div class="min-w-0"><p class="truncate text-sm font-semibold text-slate-900">{{ $currentUser['name'] }}</p><p class="truncate text-[11px] text-slate-500">{{ $currentUser['email'] ?? 'Demo account' }}</p></div>
                 </div>
                 <span class="mt-2 inline-flex rounded-full bg-red-50 px-2 py-1 text-[9px] font-semibold text-red-600">{{ $currentUser['role'] }}</span>
             </div>
             <div class="p-2">
+                <button type="button" class="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-100 focus:bg-slate-100 focus:outline-none dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800" data-profile-picture-open role="menuitem">
+                    <i class="fa-solid fa-camera w-4 text-center text-blue-600" aria-hidden="true"></i>
+                    <span>Change profile picture</span>
+                </button>
                 <button type="button" class="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-medium text-red-600 transition hover:bg-red-50 focus:bg-red-50 focus:outline-none" data-logout-open role="menuitem">
                     <i class="fa-solid fa-arrow-right-from-bracket w-4 text-center" aria-hidden="true"></i>
                     <span>Log out</span>
                 </button>
             </div>
+        </div>
+
+        <div id="profile-picture-modal" data-endpoint="{{ route('profile.avatar.update') }}" data-has-avatar="{{ ! empty($currentUser['avatar_data_url']) ? 'true' : 'false' }}" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 print:hidden" role="dialog" aria-modal="true" aria-labelledby="profile-picture-title" aria-describedby="profile-picture-description" aria-hidden="true">
+            <button type="button" class="absolute inset-0 cursor-default bg-slate-950/60 backdrop-blur-[1px]" data-profile-picture-close aria-label="Close profile picture editor"></button>
+            <section class="relative z-10 w-full max-w-lg overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                <header class="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+                    <div><h2 id="profile-picture-title" class="text-sm font-semibold text-slate-900 dark:text-white">Change profile picture</h2><p id="profile-picture-description" class="mt-1 text-xs text-slate-500 dark:text-slate-400">Choose an image, then drag it to position your profile picture.</p></div>
+                    <button type="button" class="apm-icon-button shrink-0" data-profile-picture-close aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                </header>
+                <div class="p-5">
+                    <label class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-xs font-medium text-slate-600 transition hover:border-blue-400 hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-300" for="profile-picture-input">
+                        <i class="fa-solid fa-image text-blue-600" aria-hidden="true"></i><span>Choose JPG, PNG, or WebP image</span>
+                    </label>
+                    <input id="profile-picture-input" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
+                    <p class="mt-2 text-center text-[10px] text-slate-400">Maximum source file size: 5 MB</p>
+
+                    <div class="mt-4 hidden" data-profile-picture-editor>
+                        <div class="relative mx-auto size-64 max-w-full overflow-hidden rounded-full border-4 border-white bg-slate-100 shadow-lg ring-1 ring-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:ring-slate-700">
+                            <canvas width="256" height="256" tabindex="0" class="size-full touch-none cursor-grab focus:outline-none focus:ring-4 focus:ring-blue-300/70 active:cursor-grabbing" data-profile-picture-canvas aria-label="Profile picture crop preview. Drag the image to reposition it."></canvas>
+                        </div>
+                        <p class="mt-3 text-center text-xs text-slate-500 dark:text-slate-400"><i class="fa-solid fa-up-down-left-right mr-1" aria-hidden="true"></i> Drag the photo to adjust the crop</p>
+                    </div>
+                    <p class="mt-3 hidden rounded-lg border px-3 py-2 text-xs" data-profile-picture-message role="alert"></p>
+                </div>
+                <footer class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/70 px-5 py-4 dark:border-slate-800 dark:bg-slate-950/40">
+                    <button type="button" class="apm-outline-button text-red-600! disabled:hidden" data-profile-picture-remove @disabled(empty($currentUser['avatar_data_url']))><i class="fa-solid fa-trash" aria-hidden="true"></i> Remove picture</button>
+                    <div class="ml-auto flex gap-2"><button type="button" class="apm-outline-button" data-profile-picture-close>Cancel</button><button type="button" class="apm-primary-button" data-profile-picture-save disabled><i class="fa-solid fa-check" aria-hidden="true"></i><span>Save picture</span></button></div>
+                </footer>
+            </section>
         </div>
 
         <div id="logout-confirmation-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 print:hidden" role="dialog" aria-modal="true" aria-labelledby="logout-confirmation-title" aria-describedby="logout-confirmation-description" aria-hidden="true">

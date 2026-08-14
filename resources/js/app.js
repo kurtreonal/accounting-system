@@ -158,6 +158,215 @@ const setupDemoUserSwitcher = () => {
     });
 };
 
+const setupProfilePicture = () => {
+    const openButton = document.querySelector('[data-profile-picture-open]');
+    const modal = document.querySelector('#profile-picture-modal');
+    const input = modal?.querySelector('#profile-picture-input');
+    const editor = modal?.querySelector('[data-profile-picture-editor]');
+    const canvas = modal?.querySelector('[data-profile-picture-canvas]');
+    const saveButton = modal?.querySelector('[data-profile-picture-save]');
+    const removeButton = modal?.querySelector('[data-profile-picture-remove]');
+    const message = modal?.querySelector('[data-profile-picture-message]');
+
+    if (!openButton || !modal || !input || !editor || !canvas || !saveButton || !removeButton || !message) return;
+
+    const context = canvas.getContext('2d');
+    let sourceImage = null;
+    let sourceUrl = null;
+    let busy = false;
+    let offsetX = 0;
+    let offsetY = 0;
+    let dragPointer = null;
+    let previousPointerX = 0;
+    let previousPointerY = 0;
+
+    const showMessage = (text, type = 'error') => {
+        message.textContent = text;
+        message.classList.remove('hidden', 'border-red-200', 'bg-red-50', 'text-red-700', 'border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+        message.classList.add(...(type === 'success'
+            ? ['border-emerald-200', 'bg-emerald-50', 'text-emerald-700']
+            : ['border-red-200', 'bg-red-50', 'text-red-700']));
+    };
+
+    const clearMessage = () => {
+        message.textContent = '';
+        message.classList.add('hidden');
+    };
+
+    const draw = () => {
+        if (!sourceImage || !context) return;
+        const size = 256;
+        const scale = Math.max(size / sourceImage.naturalWidth, size / sourceImage.naturalHeight);
+        const width = sourceImage.naturalWidth * scale;
+        const height = sourceImage.naturalHeight * scale;
+        const maxX = Math.max(0, (width - size) / 2);
+        const maxY = Math.max(0, (height - size) / 2);
+        offsetX = Math.max(-maxX, Math.min(maxX, offsetX));
+        offsetY = Math.max(-maxY, Math.min(maxY, offsetY));
+        const x = ((size - width) / 2) + offsetX;
+        const y = ((size - height) / 2) + offsetY;
+
+        context.clearRect(0, 0, size, size);
+        context.drawImage(sourceImage, x, y, width, height);
+    };
+
+    const resetEditor = () => {
+        if (sourceUrl) URL.revokeObjectURL(sourceUrl);
+        sourceUrl = null;
+        sourceImage = null;
+        offsetX = 0;
+        offsetY = 0;
+        dragPointer = null;
+        input.value = '';
+        editor.classList.add('hidden');
+        saveButton.disabled = true;
+        clearMessage();
+        context?.clearRect(0, 0, 256, 256);
+    };
+
+    const close = () => {
+        if (busy) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('overflow-hidden');
+        resetEditor();
+        document.querySelector('[data-profile-toggle]')?.focus();
+    };
+
+    const open = () => {
+        const profileMenu = document.querySelector('#profile-menu');
+        profileMenu?.classList.add('hidden');
+        profileMenu?.setAttribute('aria-hidden', 'true');
+        document.querySelectorAll('[data-profile-toggle]').forEach((toggle) => toggle.setAttribute('aria-expanded', 'false'));
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('overflow-hidden');
+        input.focus();
+    };
+
+    const saveAvatar = async (avatarDataUrl) => {
+        busy = true;
+        saveButton.disabled = true;
+        removeButton.disabled = true;
+        const saveLabel = saveButton.querySelector('span');
+        if (saveLabel) saveLabel.textContent = 'Saving...';
+        clearMessage();
+
+        try {
+            const response = await fetch(modal.dataset.endpoint, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                },
+                body: JSON.stringify({ avatar_data_url: avatarDataUrl }),
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.message || 'Unable to update the profile picture.');
+            showMessage(result.message || 'Profile picture updated.', 'success');
+            window.setTimeout(() => window.location.reload(), 350);
+        } catch (error) {
+            showMessage(error instanceof Error ? error.message : 'Unable to update the profile picture.');
+            busy = false;
+            saveButton.disabled = !sourceImage;
+            removeButton.disabled = modal.dataset.hasAvatar !== 'true';
+            if (saveLabel) saveLabel.textContent = 'Save picture';
+        }
+    };
+
+    openButton.addEventListener('click', open);
+    modal.querySelectorAll('[data-profile-picture-close]').forEach((button) => button.addEventListener('click', close));
+
+    input.addEventListener('change', () => {
+        clearMessage();
+        const file = input.files?.[0];
+        if (!file) return resetEditor();
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+            resetEditor();
+            return showMessage('Choose a JPG, PNG, or WebP image.');
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            resetEditor();
+            return showMessage('The source image must be 5 MB or smaller.');
+        }
+
+        if (sourceUrl) URL.revokeObjectURL(sourceUrl);
+        sourceUrl = URL.createObjectURL(file);
+        const image = new Image();
+        image.onload = () => {
+            sourceImage = image;
+            offsetX = 0;
+            offsetY = 0;
+            editor.classList.remove('hidden');
+            saveButton.disabled = false;
+            draw();
+        };
+        image.onerror = () => {
+            resetEditor();
+            showMessage('The selected image could not be read.');
+        };
+        image.src = sourceUrl;
+    });
+
+    canvas.addEventListener('pointerdown', (event) => {
+        if (!sourceImage) return;
+        dragPointer = event.pointerId;
+        previousPointerX = event.clientX;
+        previousPointerY = event.clientY;
+        canvas.setPointerCapture(event.pointerId);
+    });
+
+    canvas.addEventListener('pointermove', (event) => {
+        if (dragPointer !== event.pointerId || !sourceImage) return;
+        const scale = 256 / canvas.getBoundingClientRect().width;
+        offsetX += (event.clientX - previousPointerX) * scale;
+        offsetY += (event.clientY - previousPointerY) * scale;
+        previousPointerX = event.clientX;
+        previousPointerY = event.clientY;
+        draw();
+    });
+
+    const finishDragging = (event) => {
+        if (dragPointer !== event.pointerId) return;
+        dragPointer = null;
+        if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    };
+    canvas.addEventListener('pointerup', finishDragging);
+    canvas.addEventListener('pointercancel', finishDragging);
+
+    canvas.addEventListener('keydown', (event) => {
+        if (!sourceImage || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+        event.preventDefault();
+        const movement = event.shiftKey ? 10 : 3;
+        if (event.key === 'ArrowLeft') offsetX -= movement;
+        if (event.key === 'ArrowRight') offsetX += movement;
+        if (event.key === 'ArrowUp') offsetY -= movement;
+        if (event.key === 'ArrowDown') offsetY += movement;
+        draw();
+    });
+
+    saveButton.addEventListener('click', () => {
+        if (!sourceImage || busy) return;
+        const prompt = modal.dataset.hasAvatar === 'true'
+            ? 'Replace your current profile picture with this crop?'
+            : 'Use this crop as your profile picture?';
+        if (!window.confirm(prompt)) return;
+        saveAvatar(canvas.toDataURL('image/jpeg', 0.86));
+    });
+
+    removeButton.addEventListener('click', () => {
+        if (busy || modal.dataset.hasAvatar !== 'true' || !window.confirm('Remove your profile picture and use the default user icon?')) return;
+        saveAvatar(null);
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !modal.classList.contains('hidden')) close();
+    });
+};
+
 const setupPagePrinting = () => {
     const printSheet = document.querySelector('#apm-print-sheet');
     const tableContainer = printSheet?.querySelector('[data-print-tables]');
@@ -297,6 +506,7 @@ const setupProfileLogout = () => {
 
 document.addEventListener('DOMContentLoaded', setupThemeToggle);
 document.addEventListener('DOMContentLoaded', setupDemoUserSwitcher);
+document.addEventListener('DOMContentLoaded', setupProfilePicture);
 document.addEventListener('DOMContentLoaded', setupSidebarToggle);
 document.addEventListener('DOMContentLoaded', setupPagePrinting);
 document.addEventListener('DOMContentLoaded', setupProfileLogout);

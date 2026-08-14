@@ -17,15 +17,6 @@ class GeneralLedgerPdf extends AccountingPdf
 
     protected function afterDocumentHeader(): void
     {
-        $account = $this->report['account'];
-        $filters = $this->report['filters'];
-        $this->SetFont('Helvetica', 'B', 10);
-        $this->SetTextColor(15, 23, 42);
-        $this->Cell(150, 6, $this->pdfText($account['code'].' - '.$account['name']), 0, 0);
-        $this->SetFont('Helvetica', '', 8);
-        $this->SetTextColor(100, 116, 139);
-        $this->Cell(0, 6, $this->pdfText(($filters['date_from'] ?: 'Beginning').' to '.($filters['date_to'] ?: 'Present')), 0, 1, 'R');
-        $this->Ln(2);
         $this->tableHeader(['Date', 'Journal Entry', 'Reference', 'Description', 'Debit', 'Credit', 'Running Balance'], $this->widths, ['', '', '', '', 'R', 'R', 'R']);
     }
 
@@ -49,10 +40,11 @@ class GeneralLedgerPdf extends AccountingPdf
 
         $this->SetFont('Helvetica', 'B', 9);
         $this->SetTextColor(15, 23, 42);
-        $this->Cell(array_sum(array_slice($this->widths, 0, 4)), 8, count($this->report['rows']).' transactions', 1, 0);
-        $this->Cell($this->widths[4], 8, $this->money((float) $this->report['total_debit']), 1, 0, 'R');
-        $this->Cell($this->widths[5], 8, $this->money((float) $this->report['total_credit']), 1, 0, 'R');
-        $this->Cell($this->widths[6], 8, $this->money((float) $this->report['ending_balance']), 1, 1, 'R');
+        $this->SetDrawColor(17, 24, 39);
+        $this->Cell(array_sum(array_slice($this->widths, 0, 4)), 8, count($this->report['rows']).' transactions', 'TB', 0);
+        $this->Cell($this->widths[4], 8, $this->money((float) $this->report['total_debit']), 'TB', 0, 'R');
+        $this->Cell($this->widths[5], 8, $this->money((float) $this->report['total_credit']), 'TB', 0, 'R');
+        $this->Cell($this->widths[6], 8, $this->money((float) $this->report['ending_balance']), 'TB', 1, 'R');
 
         return $this;
     }

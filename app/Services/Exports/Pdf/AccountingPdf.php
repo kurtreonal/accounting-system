@@ -10,7 +10,7 @@ abstract class AccountingPdf extends Fpdf
     public function __construct(
         string $orientation,
         private readonly string $documentTitle,
-        private readonly DateTimeInterface $generatedAt,
+        DateTimeInterface $generatedAt,
     ) {
         parent::__construct($orientation, 'mm', 'A4');
 
@@ -18,35 +18,19 @@ abstract class AccountingPdf extends Fpdf
         $this->SetAutoPageBreak(true, 15);
         $this->AliasNbPages();
         $this->SetTitle($documentTitle);
-        $this->SetAuthor('APM Customs Accounting System');
     }
 
     public function Header(): void
     {
-        $this->SetTextColor(15, 23, 42);
-        $this->SetFont('Helvetica', 'B', 12);
-        $this->Cell(100, 6, 'APM Customs', 0, 0, 'L');
-
+        $this->SetTextColor(17, 24, 39);
         $this->SetFont('Helvetica', 'B', 14);
-        $this->Cell(0, 6, $this->pdfText($this->documentTitle), 0, 1, 'R');
-        $this->SetFont('Helvetica', '', 8);
-        $this->SetTextColor(100, 116, 139);
-        $this->Cell(100, 5, 'Accounting System', 0, 0, 'L');
-        $this->Cell(0, 5, 'Generated '.$this->generatedAt->format('Y-m-d H:i'), 0, 1, 'R');
-        $this->SetDrawColor(203, 213, 225);
-        $this->Line(12, $this->GetY() + 2, $this->GetPageWidth() - 12, $this->GetY() + 2);
-        $this->Ln(7);
+        $this->Cell(0, 8, $this->pdfText($this->documentTitle), 0, 1, 'L');
+        $this->Ln(4);
 
         $this->afterDocumentHeader();
     }
 
-    public function Footer(): void
-    {
-        $this->SetY(-10);
-        $this->SetFont('Helvetica', '', 8);
-        $this->SetTextColor(100, 116, 139);
-        $this->Cell(0, 5, 'Page '.$this->PageNo().' of {nb}', 0, 0, 'C');
-    }
+    public function Footer(): void {}
 
     protected function afterDocumentHeader(): void {}
 
@@ -56,13 +40,12 @@ abstract class AccountingPdf extends Fpdf
      */
     protected function tableHeader(array $headers, array $widths, array $alignments = []): void
     {
-        $this->SetFillColor(37, 99, 235);
-        $this->SetDrawColor(203, 213, 225);
-        $this->SetTextColor(255, 255, 255);
+        $this->SetDrawColor(17, 24, 39);
+        $this->SetTextColor(17, 24, 39);
         $this->SetFont('Helvetica', 'B', 8);
 
         foreach ($headers as $index => $header) {
-            $this->Cell($widths[$index], 8, $this->pdfText($header), 1, 0, $alignments[$index] ?? 'L', true);
+            $this->Cell($widths[$index], 8, $this->pdfText($header), 'TB', 0, $alignments[$index] ?? 'L');
         }
 
         $this->Ln();
@@ -93,15 +76,14 @@ abstract class AccountingPdf extends Fpdf
 
         foreach ($cells as $index => $cell) {
             $width = (float) $widths[$index];
-            $this->SetFillColor($alternate ? 248 : 255, $alternate ? 250 : 255, $alternate ? 252 : 255);
-            $this->SetDrawColor(226, 232, 240);
-            $this->Rect($this->GetX(), $startY, $width, $height, 'DF');
-            $this->SetTextColor(in_array($index, $negativeColumns, true) ? 220 : 51, in_array($index, $negativeColumns, true) ? 38 : 65, in_array($index, $negativeColumns, true) ? 38 : 85);
+            $this->SetTextColor(17, 24, 39);
             $cellX = $this->GetX();
             $this->MultiCell($width, 4.5, $cell, 0, $alignments[$index] ?? 'L');
             $this->SetXY($cellX + $width, $startY);
         }
 
+        $this->SetDrawColor(209, 213, 219);
+        $this->Line($startX, $startY + $height, $startX + array_sum($widths), $startY + $height);
         $this->SetXY($startX, $startY + $height);
     }
 

@@ -12,17 +12,11 @@ class AccountsPayablePdf extends AccountingPdf
     /** @param array<string, string> $filters */
     public function __construct(DateTimeInterface $generatedAt, private readonly array $filters)
     {
-        parent::__construct('L', 'Accounts Payable - Open Payables', $generatedAt);
+        parent::__construct('L', 'Accounts Payable', $generatedAt);
     }
 
     protected function afterDocumentHeader(): void
     {
-        $search = $this->filters['search'] ?: 'All payables';
-        $status = $this->filters['status'] ?: 'All statuses';
-        $this->SetFont('Helvetica', '', 8);
-        $this->SetTextColor(100, 116, 139);
-        $this->Cell(0, 5, $this->pdfText('Search: '.$search.' | Status: '.$status), 0, 1);
-        $this->Ln(2);
         $this->tableHeader(
             ['Document', 'Document Date', 'Due Date', 'Payee', 'Amount', 'Paid', 'Balance', 'Status'],
             $this->widths,
@@ -38,7 +32,7 @@ class AccountsPayablePdf extends AccountingPdf
         if ($bills === []) {
             $this->SetFont('Helvetica', 'I', 10);
             $this->SetTextColor(100, 116, 139);
-            $this->Cell(array_sum($this->widths), 12, 'No open payables match selected filters.', 1, 1, 'C');
+            $this->Cell(array_sum($this->widths), 12, 'No open payables match selected filters.', 'TB', 1, 'C');
 
             return $this;
         }
@@ -64,11 +58,12 @@ class AccountsPayablePdf extends AccountingPdf
 
         $this->SetFont('Helvetica', 'B', 8);
         $this->SetTextColor(15, 23, 42);
-        $this->Cell(array_sum(array_slice($this->widths, 0, 4)), 8, count($bills).' payable(s)', 1, 0, 'R');
-        $this->Cell($this->widths[4], 8, $this->money($total), 1, 0, 'R');
-        $this->Cell($this->widths[5], 8, $this->money($paid), 1, 0, 'R');
-        $this->Cell($this->widths[6], 8, $this->money($balance), 1, 0, 'R');
-        $this->Cell($this->widths[7], 8, '', 1, 1);
+        $this->SetDrawColor(17, 24, 39);
+        $this->Cell(array_sum(array_slice($this->widths, 0, 4)), 8, count($bills).' payable(s)', 'TB', 0, 'R');
+        $this->Cell($this->widths[4], 8, $this->money($total), 'TB', 0, 'R');
+        $this->Cell($this->widths[5], 8, $this->money($paid), 'TB', 0, 'R');
+        $this->Cell($this->widths[6], 8, $this->money($balance), 'TB', 0, 'R');
+        $this->Cell($this->widths[7], 8, '', 'TB', 1);
 
         return $this;
     }

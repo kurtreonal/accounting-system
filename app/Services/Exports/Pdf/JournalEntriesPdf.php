@@ -18,18 +18,6 @@ class JournalEntriesPdf extends AccountingPdf
 
     protected function afterDocumentHeader(): void
     {
-        $filter = trim(implode(' | ', array_filter([
-            ($this->filters['status'] ?? '') !== '' ? 'Status: '.$this->filters['status'] : '',
-            ($this->filters['search'] ?? '') !== '' ? 'Search: '.$this->filters['search'] : '',
-        ])));
-
-        if ($filter !== '') {
-            $this->SetFont('Helvetica', '', 8);
-            $this->SetTextColor(100, 116, 139);
-            $this->Cell(0, 5, $this->pdfText($filter), 0, 1);
-            $this->Ln(2);
-        }
-
         $this->tableHeader(
             ['JE No.', 'Date', 'Description', 'Reference', 'Total Debit', 'Prepared By', 'Status'],
             $this->widths,
@@ -45,7 +33,7 @@ class JournalEntriesPdf extends AccountingPdf
         if ($entries === []) {
             $this->SetFont('Helvetica', 'I', 9);
             $this->SetTextColor(100, 116, 139);
-            $this->Cell(array_sum($this->widths), 12, 'No journal entries found.', 1, 1, 'C');
+            $this->Cell(array_sum($this->widths), 12, 'No journal entries found.', 'TB', 1, 'C');
 
             return $this;
         }

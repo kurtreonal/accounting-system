@@ -159,22 +159,51 @@ const setupDemoUserSwitcher = () => {
 };
 
 const setupPagePrinting = () => {
-    const updateGeneratedTime = () => {
-        document.querySelectorAll('[data-print-generated]').forEach((element) => {
-            element.textContent = new Date().toLocaleString('en-PH', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
+    const printSheet = document.querySelector('#apm-print-sheet');
+    const tableContainer = printSheet?.querySelector('[data-print-tables]');
+
+    const preparePrintTables = () => {
+        if (!printSheet || !tableContainer) return;
+
+        tableContainer.replaceChildren();
+
+        const tables = [...document.querySelectorAll('#app-shell > main table')]
+            .filter((table) => !table.closest('[hidden]') && !table.closest('.hidden'));
+
+        tables.forEach((table) => {
+            const clone = table.cloneNode(true);
+
+            const sourceCells = [...table.querySelectorAll('th, td')];
+            const clonedCells = [...clone.querySelectorAll('th, td')];
+            clonedCells.forEach((cell, index) => {
+                cell.style.textAlign = window.getComputedStyle(sourceCells[index]).textAlign;
             });
+
+            clone.querySelectorAll('[class~="print:hidden"], [data-print-exclude]').forEach((element) => element.remove());
+            clone.querySelectorAll('button, a').forEach((element) => element.replaceWith(document.createTextNode(element.textContent.trim())));
+            clone.removeAttribute('class');
+            clone.querySelectorAll('[class]').forEach((element) => element.removeAttribute('class'));
+            tableContainer.append(clone);
         });
+
+        if (tables.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'apm-print-empty';
+            empty.textContent = 'No table data available.';
+            tableContainer.append(empty);
+        }
     };
 
     document.querySelectorAll('[data-print-page]').forEach((button) => {
-        button.addEventListener('click', () => window.print());
+        button.addEventListener('click', () => {
+            preparePrintTables();
+            window.print();
+        });
     });
-    window.addEventListener('beforeprint', updateGeneratedTime);
+    window.addEventListener('beforeprint', () => {
+        if (tableContainer?.childElementCount === 0) preparePrintTables();
+    });
+    window.addEventListener('afterprint', () => tableContainer?.replaceChildren());
 };
 
 const setupProfileLogout = () => {

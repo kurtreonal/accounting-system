@@ -197,16 +197,10 @@
             </section>
         </div>
 
-        <header class="apm-print-header" aria-hidden="true">
-            <div>
-                <p class="apm-print-brand">APM Customs</p>
-                <p class="apm-print-system">Accounting System</p>
-            </div>
-            <div class="apm-print-title-block">
-                <h1>{{ $pageTitle }}</h1>
-                <p>Generated <span data-print-generated>{{ now()->format('Y-m-d H:i') }}</span></p>
-            </div>
-        </header>
+        <section id="apm-print-sheet" aria-hidden="true">
+            <h1>{{ $pageTitle }}</h1>
+            <div data-print-tables></div>
+        </section>
 
         @yield('content')
 

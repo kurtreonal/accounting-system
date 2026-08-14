@@ -906,6 +906,116 @@ html.dark a {
     }
 }
 
+/* Minimal, theme-independent table printout. This final print layer intentionally
+   overrides the richer legacy print rules above. */
+#apm-print-sheet {
+    display: none;
+}
+
+@media print {
+    @page {
+        size: A4 landscape;
+        margin: 10mm;
+    }
+
+    html,
+    html.dark,
+    body,
+    html.dark body {
+        color-scheme: light !important;
+        background: #fff !important;
+        color: #111827 !important;
+    }
+
+    #app-shell > main,
+    .apm-print-header {
+        display: none !important;
+    }
+
+    #apm-print-sheet {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        color: #111827 !important;
+    }
+
+    #apm-print-sheet > h1 {
+        margin: 0 0 6mm !important;
+        padding: 0 !important;
+        color: #111827 !important;
+        font-family: Arial, Helvetica, sans-serif !important;
+        font-size: 15pt !important;
+        font-weight: 700 !important;
+        line-height: 1.2 !important;
+        text-align: left !important;
+    }
+
+    #apm-print-sheet table {
+        width: 100% !important;
+        min-width: 0 !important;
+        margin: 0 0 6mm !important;
+        border: 0 !important;
+        border-collapse: collapse !important;
+        table-layout: auto !important;
+        background: #fff !important;
+        color: #111827 !important;
+        font-family: Arial, Helvetica, sans-serif !important;
+        font-size: 8pt !important;
+    }
+
+    #apm-print-sheet thead {
+        display: table-header-group !important;
+    }
+
+    #apm-print-sheet tfoot {
+        display: table-footer-group !important;
+    }
+
+    #apm-print-sheet tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        border: 0 !important;
+        background: #fff !important;
+    }
+
+    #apm-print-sheet th,
+    #apm-print-sheet td {
+        padding: 2.2mm 2mm !important;
+        border: 0 !important;
+        border-bottom: .2mm solid #d1d5db !important;
+        background: #fff !important;
+        color: #111827 !important;
+        box-shadow: none !important;
+        text-align: left;
+        vertical-align: top !important;
+    }
+
+    #apm-print-sheet thead th {
+        border-top: .3mm solid #111827 !important;
+        border-bottom: .3mm solid #111827 !important;
+        font-size: 7.5pt !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+    }
+
+    #apm-print-sheet tfoot td {
+        border-top: .3mm solid #111827 !important;
+        border-bottom: .3mm solid #111827 !important;
+        font-weight: 700 !important;
+    }
+
+    #apm-print-sheet .apm-print-empty {
+        margin: 0;
+        padding: 3mm 0;
+        border-top: .3mm solid #111827;
+        border-bottom: .2mm solid #d1d5db;
+        color: #4b5563;
+        font-size: 9pt;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

@@ -1,6 +1,6 @@
 {
     "company": {
-        "name": "APM Customs",
+        "name": "Nexii-Tech Solutions Inc.",
         "legal_name": "Demo Company",
         "tax_id": "123-456-789-876",
         "email": "accounting@apm.example",
@@ -16,5 +16,5 @@
         "bill_prefix": "BILL",
         "timezone": "Asia/Manila"
     },
-    "updated_at": "2026-08-13T09:42:31+00:00"
+    "updated_at": "2026-08-14T05:01:17+00:00"
 }

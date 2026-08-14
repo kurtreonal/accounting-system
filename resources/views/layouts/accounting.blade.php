@@ -51,12 +51,10 @@
     <div id="app-shell" class="min-h-screen lg:pl-60 print:pl-0">
         <button id="sidebar-overlay" type="button" class="fixed inset-0 z-25 hidden cursor-default bg-slate-950/55 lg:hidden print:hidden" aria-label="Close navigation"></button>
         <aside id="app-sidebar" class="fixed inset-y-0 left-0 z-30 hidden h-dvh w-60 flex-col overflow-hidden bg-[#0f172a] text-slate-300 lg:flex print:hidden" aria-label="Primary navigation">
-            <div class="flex h-14 shrink-0 items-center gap-2.5 border-b border-white/10 px-3.5">
-                <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-blue-600 text-[11px] font-bold text-white shadow-lg shadow-blue-950/30">APM</span>
-                <div class="apm-sidebar-label min-w-0 leading-tight">
-                    <p class="truncate text-sm font-semibold text-white">APM Customs</p>
-                    <p class="text-xs text-slate-500">Accounting System</p>
-                </div>
+            <div class="flex h-14 shrink-0 items-center border-b border-white/10 px-3.5">
+                <a href="{{ route('dashboard') }}" class="apm-sidebar-label min-w-0 text-sm font-semibold leading-tight text-white transition hover:text-blue-300" aria-label="Nexii-Tech Solutions Inc. dashboard" title="Nexii-Tech Solutions Inc.">
+                    Nexii-Tech Solutions Inc.
+                </a>
             </div>
 
             <nav class="dashboard-scrollbar-hidden min-h-0 flex-1 overflow-y-auto px-2 py-3 text-[12.5px]">

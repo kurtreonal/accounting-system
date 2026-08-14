@@ -32,6 +32,16 @@
     $demoCan = fn (string $permission): bool => in_array('*', $demoPermissions, true) || in_array($permission, $demoPermissions, true);
     $userInitials = collect(preg_split('/\s+/', trim($currentUser['name'] ?? 'Demo User')))
         ->filter()->take(2)->map(fn ($part) => Str::upper(Str::substr($part, 0, 1)))->join('');
+    $demoRoleLabels = [
+        'Administrator' => 'Administrator',
+        'Accountant' => 'Accountant',
+        'Encoder / Staff' => 'Encoder',
+        'Viewer / Auditor' => 'Auditor',
+    ];
+    $demoUsers = collect(app(\App\Services\DemoData\UserDataService::class)->all())
+        ->filter(fn (array $user): bool => ($user['active'] ?? false) === true && isset($demoRoleLabels[$user['role'] ?? '']))
+        ->sortBy(fn (array $user): int => array_search($user['role'], array_keys($demoRoleLabels), true))
+        ->values();
 @endphp
 <body class="min-h-screen bg-[#f2f6fa] font-sans text-slate-800 antialiased">
     <script id="demo-access" type="application/json">{!! Illuminate\Support\Js::encode([
@@ -112,6 +122,9 @@
                 <input type="search" placeholder="Search anything..." class="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pr-3 pl-9 text-xs outline-none transition duration-150 placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-3 focus:ring-blue-100">
             </label>
             <div class="ml-auto flex items-center gap-1.5 sm:gap-2">
+                <button id="demo-user-toggle" type="button" aria-label="Switch demo user" aria-haspopup="menu" aria-expanded="false" aria-controls="demo-user-menu" title="Switch demo user" class="apm-icon-button">
+                    <i class="fa-solid fa-users" aria-hidden="true"></i>
+                </button>
                 <button id="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode" class="apm-icon-button">
                     <svg class="theme-icon-moon size-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 15.75A9.75 9.75 0 0 1 8.25 2.25a9.75 9.75 0 1 0 13.5 13.5Z"/></svg>
                     <svg class="theme-icon-sun size-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="3.75"/><path stroke-linecap="round" d="M12 2.25v2.1M12 19.65v2.1M21.75 12h-2.1M4.35 12h-2.1M18.9 5.1l-1.48 1.48M6.58 17.42 5.1 18.9M18.9 18.9l-1.48-1.48M6.58 6.58 5.1 5.1"/></svg>
@@ -119,6 +132,37 @@
                 <button type="button" class="grid size-8 cursor-pointer place-items-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-sm transition hover:bg-red-500 focus:outline-none focus:ring-3 focus:ring-red-200" data-profile-toggle aria-label="Open profile menu for {{ $currentUser['name'] }}" aria-haspopup="menu" aria-expanded="false" title="Open profile menu">{{ $userInitials }}</button>
             </div>
         </header>
+
+        <div id="demo-user-menu" class="fixed z-50 hidden w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl print:hidden dark:border-slate-700 dark:bg-slate-900" role="menu" aria-hidden="true" aria-labelledby="demo-user-toggle">
+            <div class="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+                <p class="text-sm font-semibold text-slate-900 dark:text-white">Demo user access</p>
+                <p class="mt-1 text-[11px] leading-4 text-slate-500 dark:text-slate-400">Switch roles to preview each account's navigation and authority.</p>
+            </div>
+            <div class="p-2">
+                @foreach ($demoUsers as $demoUser)
+                    @php
+                        $isCurrentDemoUser = (int) ($currentUser['id'] ?? 0) === (int) $demoUser['id'];
+                        $demoInitials = collect(preg_split('/\s+/', trim($demoUser['name'] ?? 'Demo User')))
+                            ->filter()->take(2)->map(fn ($part) => Str::upper(Str::substr($part, 0, 1)))->join('');
+                    @endphp
+                    <form method="POST" action="{{ route('demo-user.switch') }}" data-demo-user-form>
+                        @csrf
+                        <input type="hidden" name="user_id" value="{{ $demoUser['id'] }}">
+                        <button type="submit" role="menuitemradio" aria-checked="{{ $isCurrentDemoUser ? 'true' : 'false' }}" @disabled($isCurrentDemoUser) class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-blue-50 focus:bg-blue-50 focus:outline-none disabled:cursor-default disabled:bg-slate-100 dark:hover:bg-slate-800 dark:focus:bg-slate-800 dark:disabled:bg-slate-800/70">
+                            <span class="grid size-8 shrink-0 place-items-center rounded-full {{ $isCurrentDemoUser ? 'bg-blue-600' : 'bg-slate-600' }} text-[10px] font-bold text-white">{{ $demoInitials }}</span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-xs font-semibold text-slate-800 dark:text-slate-100">{{ $demoRoleLabels[$demoUser['role']] }}</span>
+                                <span class="block truncate text-[10px] text-slate-500 dark:text-slate-400">{{ $demoUser['name'] }}</span>
+                            </span>
+                            @if ($isCurrentDemoUser)
+                                <i class="fa-solid fa-check text-xs text-blue-600" aria-label="Current user"></i>
+                            @endif
+                        </button>
+                    </form>
+                @endforeach
+            </div>
+            <p class="border-t border-amber-100 bg-amber-50 px-4 py-2.5 text-[10px] leading-4 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">Demo access control only — not production authentication.</p>
+        </div>
 
         <div id="profile-menu" class="fixed z-50 hidden w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl print:hidden" role="menu" aria-hidden="true">
             <div class="border-b border-slate-100 px-4 py-3">

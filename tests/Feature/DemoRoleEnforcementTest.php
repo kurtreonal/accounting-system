@@ -63,6 +63,22 @@ class DemoRoleEnforcementTest extends TestCase
         $this->withSession($this->demoSession('Accountant'))->get('/users-settings')->assertForbidden();
     }
 
+    public function test_navbar_demo_user_switch_updates_the_session_and_permissions(): void
+    {
+        $response = $this->withSession($this->demoSession('Administrator'))
+            ->post('/demo-user/switch', ['user_id' => 4]);
+
+        $response->assertRedirect('/dashboard')
+            ->assertSessionHas('demo_user.id', 4)
+            ->assertSessionHas('demo_user.role', 'Viewer / Auditor');
+
+        $dashboard = $this->get('/dashboard')->assertOk();
+        $dashboard->assertSee('Demo user access')
+            ->assertSee('Auditor')
+            ->assertDontSee('New Journal Entry')
+            ->assertDontSee('Users &amp; Settings', false);
+    }
+
     public function test_demo_reset_clears_records_but_preserves_zeroed_accounts_and_configuration(): void
     {
         $directory = storage_path('framework/testing/demo-reset-'.uniqid());

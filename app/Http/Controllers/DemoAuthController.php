@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Accounting\DashboardDataService;
 use App\Services\DemoData\AccountDataService;
+use App\Services\DemoData\UserDataService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -53,6 +54,36 @@ class DemoAuthController extends Controller
         ]);
 
         return redirect()->route('dashboard');
+    }
+
+    public function switchUser(Request $request, UserDataService $users): RedirectResponse
+    {
+        if (! $request->session()->has('demo_user')) {
+            return redirect()->route('login');
+        }
+
+        $validated = $request->validate([
+            'user_id' => ['required', 'integer'],
+        ]);
+
+        $user = collect($users->all())->first(
+            fn (array $candidate): bool => (int) ($candidate['id'] ?? 0) === (int) $validated['user_id']
+                && ($candidate['active'] ?? false) === true
+                && in_array($candidate['role'] ?? '', array_keys((array) config('demo_permissions.roles')), true)
+        );
+
+        if (! $user) {
+            return back()->withErrors(['user_id' => 'That demo account is unavailable.']);
+        }
+
+        $request->session()->put('demo_user', [
+            'id' => $user['id'],
+            'name' => $user['name'],
+            'email' => $user['email'],
+            'role' => $user['role'],
+        ]);
+
+        return redirect()->route('dashboard')->with('demo_user_switched', "Now demonstrating {$user['role']} access as {$user['name']}.");
     }
 
     public function dashboard(Request $request, DashboardDataService $dashboard): View|RedirectResponse

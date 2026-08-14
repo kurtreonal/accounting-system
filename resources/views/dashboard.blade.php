@@ -2,6 +2,12 @@
 
 @section('content')
 <main id="dashboard-page" class="p-4 sm:p-5">
+    @if (session('demo_user_switched'))
+        <div class="mb-4 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800 print:hidden" role="status">
+            <i class="fa-solid fa-circle-check mt-0.5" aria-hidden="true"></i>
+            <span>{{ session('demo_user_switched') }}</span>
+        </div>
+    @endif
     <div class="dashboard-enter print:hidden">
         <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-xs text-slate-500"><span>Overview</span><span class="text-slate-300">/</span><span class="font-medium text-slate-700">Dashboard</span></nav>
         <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

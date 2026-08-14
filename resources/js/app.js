@@ -105,6 +105,59 @@ const setupThemeToggle = () => {
     button.addEventListener('click', () => applyTheme(root.classList.contains('dark') ? 'light' : 'dark'));
 };
 
+const setupDemoUserSwitcher = () => {
+    const toggle = document.querySelector('#demo-user-toggle');
+    const menu = document.querySelector('#demo-user-menu');
+
+    if (!toggle || !menu) return;
+
+    const close = (restoreFocus = false) => {
+        menu.classList.add('hidden');
+        menu.setAttribute('aria-hidden', 'true');
+        toggle.setAttribute('aria-expanded', 'false');
+        if (restoreFocus) toggle.focus();
+    };
+
+    const position = () => {
+        const rect = toggle.getBoundingClientRect();
+        const gap = 8;
+        const menuWidth = menu.offsetWidth || 288;
+        menu.style.left = `${Math.max(gap, Math.min(window.innerWidth - menuWidth - gap, rect.right - menuWidth))}px`;
+        menu.style.top = `${Math.min(window.innerHeight - menu.offsetHeight - gap, rect.bottom + gap)}px`;
+    };
+
+    const open = () => {
+        menu.classList.remove('hidden');
+        menu.setAttribute('aria-hidden', 'false');
+        toggle.setAttribute('aria-expanded', 'true');
+        position();
+        menu.querySelector('button:not(:disabled)')?.focus();
+    };
+
+    toggle.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (menu.classList.contains('hidden')) open();
+        else close(true);
+    });
+
+    menu.querySelectorAll('[data-demo-user-form]').forEach((form) => {
+        form.addEventListener('submit', () => {
+            const button = form.querySelector('button[type="submit"]');
+            if (button) button.disabled = true;
+        });
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!menu.classList.contains('hidden') && !menu.contains(event.target)) close();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !menu.classList.contains('hidden')) close(true);
+    });
+    window.addEventListener('resize', () => {
+        if (!menu.classList.contains('hidden')) position();
+    });
+};
+
 const setupPagePrinting = () => {
     const updateGeneratedTime = () => {
         document.querySelectorAll('[data-print-generated]').forEach((element) => {
@@ -214,6 +267,7 @@ const setupProfileLogout = () => {
 };
 
 document.addEventListener('DOMContentLoaded', setupThemeToggle);
+document.addEventListener('DOMContentLoaded', setupDemoUserSwitcher);
 document.addEventListener('DOMContentLoaded', setupSidebarToggle);
 document.addEventListener('DOMContentLoaded', setupPagePrinting);
 document.addEventListener('DOMContentLoaded', setupProfileLogout);

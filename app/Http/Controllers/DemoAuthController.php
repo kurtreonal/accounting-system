@@ -109,7 +109,7 @@ class DemoAuthController extends Controller
     /** @return array<int, array<string, mixed>> */
     private function users(): array
     {
-        $path = storage_path('demo-data/users.json');
+        $path = (string) config('accounting.users_path', storage_path('demo-data/users.json'));
 
         if (! is_file($path)) {
             throw new RuntimeException('The demo users JSON file is missing.');

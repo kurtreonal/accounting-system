@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
     --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
@@ -118,6 +120,50 @@
 
 .dashboard-scrollbar-hidden::-webkit-scrollbar {
     display: none;
+}
+
+.audit-event-log {
+    border-color: #e2e8f0;
+    background-color: #fff;
+    color: #475569;
+}
+
+.audit-event-log > header,
+.audit-event-log > form,
+.audit-event-log > footer {
+    border-color: #f1f5f9;
+    background-color: #fff;
+}
+
+.audit-event-log thead {
+    background-color: #f8fafc;
+    color: #64748b;
+}
+
+.audit-event-log tbody {
+    color: #475569;
+}
+
+html.dark .audit-event-log {
+    border-color: #334155;
+    background-color: #111827;
+    color: #cbd5e1;
+}
+
+html.dark .audit-event-log > header,
+html.dark .audit-event-log > form,
+html.dark .audit-event-log > footer {
+    border-color: #1e293b;
+    background-color: #111827;
+}
+
+html.dark .audit-event-log thead {
+    background-color: #1e293b;
+    color: #94a3b8;
+}
+
+html.dark .audit-event-log tbody {
+    color: #cbd5e1;
 }
 
 .financial-report-option {

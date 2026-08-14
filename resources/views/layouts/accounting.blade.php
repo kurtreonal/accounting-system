@@ -88,7 +88,7 @@
                 <a href="{{ route('audit-trail') }}" title="Audit Trail" @if ($activePage === 'audit-trail') aria-current="page" @endif class="apm-nav-item {{ $activePage === 'audit-trail' ? 'bg-blue-600 text-white' : '' }}"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-clock-rotate-left" aria-hidden="true"></i><span class="apm-nav-label">Audit Trail</span></span></a>
                 @endif
                 @if ($demoCan('users.manage'))
-                <button type="button" disabled aria-disabled="true" title="Phase 2—not implemented" class="apm-nav-item cursor-not-allowed opacity-50"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-users-gear" aria-hidden="true"></i><span class="apm-nav-label">Users &amp; Settings</span></span><span class="apm-nav-badge apm-full-badge">PHASE 2</span></button>
+                <a href="{{ route('users-settings') }}" title="Users &amp; Settings" @if ($activePage === 'users-settings') aria-current="page" @endif class="apm-nav-item {{ $activePage === 'users-settings' ? 'bg-blue-600 text-white shadow-md shadow-blue-950/20 hover:bg-blue-500' : '' }}"><span class="apm-nav-content"><i class="apm-nav-icon fa-solid fa-users-gear" aria-hidden="true"></i><span class="apm-nav-label">Users &amp; Settings</span></span></a>
                 @endif
             </nav>
 

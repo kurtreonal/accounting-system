@@ -28,7 +28,7 @@
         @endforeach
     </section>
 
-    <section data-audit-panel="table" class="dashboard-enter mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm [animation-delay:250ms] dark:border-slate-700 dark:bg-slate-900">
+    <section data-audit-panel="table" class="audit-event-log dashboard-enter mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm [animation-delay:250ms] dark:border-slate-700 dark:bg-slate-900">
         <header class="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
             <div><h2 class="text-sm font-semibold text-slate-900 dark:text-white">Event Log</h2><p class="mt-0.5 text-xs text-slate-500"><span data-audit-count>{{ count($logs) }}</span> events recorded</p></div>
             @if (request()->hasAny(['search', 'action', 'role', 'resource']))<a href="{{ route('audit-trail') }}" class="text-xs font-medium text-blue-600 hover:underline print:hidden">Clear filters</a>@endif

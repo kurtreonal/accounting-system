@@ -14,5 +14,7 @@ return [
     'bank_reconciliations_path' => storage_path('demo-data/bank_reconciliations.json'),
     'expenses_path' => storage_path('demo-data/expenses.json'),
     'expense_payments_path' => storage_path('demo-data/expense_payments.json'),
+    'users_path' => storage_path('demo-data/users.json'),
+    'settings_path' => storage_path('demo-data/settings.json'),
     'tax_codes_path' => storage_path('demo-data/tax_codes.json'),
 ];

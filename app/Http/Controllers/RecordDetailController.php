@@ -10,8 +10,11 @@ use App\Services\DemoData\JournalEntryDataService;
 use App\Services\DemoData\PurchaseDataService;
 use App\Services\DemoData\SalesDataService;
 use App\Services\DemoData\TaxCodeDataService;
+use App\Services\DemoData\UserDataService;
+use App\Services\DemoData\SettingDataService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class RecordDetailController extends Controller
@@ -27,6 +30,8 @@ class RecordDetailController extends Controller
         ExpensePaymentDataService $expensePayments,
         TaxCodeDataService $taxCodes,
         AccountDataService $accounts,
+        UserDataService $users,
+        SettingDataService $settings,
         DemoAccessService $access,
     ): JsonResponse {
         if (! $request->session()->has('demo_user')) {
@@ -46,6 +51,8 @@ class RecordDetailController extends Controller
                 'vendor' => $this->vendor($this->findParty($purchases->vendors(), $identifier, 'vendor')),
                 'tax_code' => $this->taxCode($this->findBy($taxCodes->all(), 'code', $identifier, 'tax code')),
                 'account' => $this->account($this->findBy($accounts->all(), 'code', $identifier, 'account')),
+                'user' => $this->user($users->find((int) $identifier)),
+                'settings' => $this->settings($identifier, $settings->all()),
                 default => throw new RuntimeException('Record type is not supported.'),
             };
         } catch (RuntimeException $exception) {
@@ -199,6 +206,32 @@ class RecordDetailController extends Controller
             ['Name', $row['name']], ['Type', $row['type']], ['Sub-type', $row['sub_type'] ?: '—'],
             ['Current Balance', $this->money($row['balance'])],
         ]);
+    }
+
+    /** @param array<string, mixed> $row */
+    private function user(array $row): array
+    {
+        return $this->record('Demo User', (string) ($row['employee_code'] ?? $row['id']), $row['active'] ? 'Active' : 'Inactive', [
+            ['Name', $row['name']], ['Email', $row['email']], ['Role', $row['role']],
+            ['Department', $row['department'] ?? '—'], ['Position', $row['position'] ?? '—'],
+            ['Employment', $row['employment_type'] ?? '—'],
+        ]);
+    }
+
+    /** @param array<string, mixed> $all */
+    private function settings(string $section, array $all): array
+    {
+        if ($section === 'all-demo-data') {
+            return $this->record('Demo Data Reset', $section, 'Completed', [
+                ['Deleted', 'Customers, vendors, transactions, journals, payments, expenses, bank activity, reconciliations, and earlier audit events'],
+                ['Preserved', 'Chart of Accounts, demo users, company/system settings, and tax configuration'],
+                ['Account Balances', 'Reset to PHP 0.00'],
+                ['Audit Trail', 'Restarted with this reset event'],
+            ]);
+        }
+        if (! in_array($section, ['company', 'system'], true)) throw new RuntimeException('Settings section could not be found.');
+        $fields = collect($all[$section] ?? [])->map(fn (mixed $value, string $key): array => [Str::headline($key), (string) $value])->values()->all();
+        return $this->record(Str::headline($section).' Settings', $section, 'Configured', $fields);
     }
 
     /** @param array<int, array<string, mixed>> $rows */

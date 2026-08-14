@@ -4,7 +4,7 @@
         "name": "Cash on Hand",
         "type": "Asset",
         "sub_type": "Cash",
-        "balance": 36558.4,
+        "balance": 0,
         "status": "Active"
     },
     {
@@ -12,7 +12,7 @@
         "name": "Accounts Receivable",
         "type": "Asset",
         "sub_type": "Current Asset",
-        "balance": 5600,
+        "balance": 0,
         "status": "Active"
     },
     {
@@ -20,7 +20,7 @@
         "name": "Accounts Payable",
         "type": "Liability",
         "sub_type": "Current Liability",
-        "balance": 17070,
+        "balance": 0,
         "status": "Active"
     },
     {
@@ -36,7 +36,7 @@
         "name": "Sales Revenue",
         "type": "Revenue",
         "sub_type": "Operating Revenue",
-        "balance": 32320,
+        "balance": 0,
         "status": "Active"
     },
     {
@@ -44,7 +44,7 @@
         "name": "Office Supplies Expense",
         "type": "Expense",
         "sub_type": "Operating Expense",
-        "balance": 1320,
+        "balance": 0,
         "status": "Active"
     },
     {
@@ -52,7 +52,7 @@
         "name": "Output Tax Payable",
         "type": "Liability",
         "sub_type": "Current Liability",
-        "balance": 3878.4,
+        "balance": 0,
         "status": "Active"
     },
     {
@@ -60,7 +60,7 @@
         "name": "Utilities Expense",
         "type": "Expense",
         "sub_type": "Operating Expense",
-        "balance": 4450,
+        "balance": 0,
         "status": "Active"
     },
     {
@@ -68,7 +68,7 @@
         "name": "Rent Expense",
         "type": "Expense",
         "sub_type": "Operating Expense",
-        "balance": 11500,
+        "balance": 0,
         "status": "Active"
     },
     {
@@ -76,7 +76,7 @@
         "name": "Computer Equipment",
         "type": "Asset",
         "sub_type": "Fixed Asset",
-        "balance": -13000,
+        "balance": 0,
         "status": "Active"
     },
     {
@@ -84,7 +84,7 @@
         "name": "Professional Fees",
         "type": "Expense",
         "sub_type": "Operating Expense",
-        "balance": 4800,
+        "balance": 0,
         "status": "Active"
     },
     {
@@ -92,7 +92,7 @@
         "name": "Input Tax Receivable",
         "type": "Asset",
         "sub_type": "Current Asset",
-        "balance": 2040,
+        "balance": 0,
         "status": "Active"
     },
     {

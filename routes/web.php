@@ -15,6 +15,7 @@ use App\Http\Controllers\JournalEntryController;
 use App\Http\Controllers\RecordDetailController;
 use App\Http\Controllers\SalesRevenueController;
 use App\Http\Controllers\TaxSettingController;
+use App\Http\Controllers\UserSettingController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -104,6 +105,16 @@ Route::get('/financial-reports/export/csv', [FinancialReportController::class, '
 Route::get('/tax-settings', [TaxSettingController::class, 'index'])->middleware('demo.permission:tax.manage')->name('tax-settings');
 Route::get('/audit-trail', [AuditTrailController::class, 'index'])->middleware('demo.permission:audit.view')->name('audit-trail');
 Route::get('/audit-trail/export/csv', [AuditTrailController::class, 'csv'])->middleware('demo.permission:audit.view')->name('audit-trail.export.csv');
+Route::get('/users-settings', [UserSettingController::class, 'index'])->middleware('demo.permission:users.manage')->name('users-settings');
+Route::get('/users-settings/export', [UserSettingController::class, 'export'])->middleware('demo.permission:users.manage')->name('users-settings.export');
+Route::post('/users-settings/users', [UserSettingController::class, 'store'])->middleware('demo.permission:users.manage')->name('users-settings.users.store');
+Route::put('/users-settings/users/{id}', [UserSettingController::class, 'update'])->middleware('demo.permission:users.manage')->name('users-settings.users.update');
+Route::patch('/users-settings/users/{id}/status', [UserSettingController::class, 'status'])->middleware('demo.permission:users.manage')->name('users-settings.users.status');
+Route::post('/users-settings/users/{id}/password', [UserSettingController::class, 'password'])->middleware('demo.permission:users.manage')->name('users-settings.users.password');
+Route::put('/users-settings/company', [UserSettingController::class, 'company'])->middleware('demo.permission:users.manage')->name('users-settings.company');
+Route::put('/users-settings/system', [UserSettingController::class, 'system'])->middleware('demo.permission:users.manage')->name('users-settings.system');
+Route::post('/users-settings/reset/prepare', [UserSettingController::class, 'prepareReset'])->middleware('demo.permission:users.manage')->name('users-settings.reset.prepare');
+Route::post('/users-settings/reset', [UserSettingController::class, 'resetDemoData'])->middleware('demo.permission:users.manage')->name('users-settings.reset');
 Route::get('/tax-settings/summary', [TaxSettingController::class, 'summary'])->middleware('demo.permission:tax.manage')->name('tax-settings.summary');
 Route::get('/tax-settings/export/csv', [TaxSettingController::class, 'csv'])->middleware('demo.permission:tax.manage')->name('tax-settings.export.csv');
 Route::post('/tax-settings', [TaxSettingController::class, 'store'])->middleware('demo.permission:tax.manage')->name('tax-settings.store');

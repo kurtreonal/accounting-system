@@ -1,34 +1,50 @@
 [
     {
         "id": 1,
+        "employee_code": "EMP-001",
         "name": "Matavia",
         "email": "admin@gmail.com",
         "password_hash": "$2y$12$Yq56udf2eiu4yshFplNvf.kwiL5PBaQZKWykBlinYhCHgVjUODMOS",
         "role": "Administrator",
+        "department": "Administration",
+        "position": "System Administrator",
+        "employment_type": "Regular",
         "active": true
     },
     {
         "id": 2,
+        "employee_code": "EMP-002",
         "name": "Lester",
         "email": "accountant@gmail.com",
         "password_hash": "$2y$12$UBbEzWrDvmbZHoZDIrnmROlq7xUjUXpZJFPogZ1dOGf2PfFF3O446",
         "role": "Accountant",
+        "department": "Finance",
+        "position": "Senior Accountant",
+        "employment_type": "Regular",
         "active": true
     },
     {
         "id": 3,
+        "employee_code": "EMP-003",
         "name": "Kristian",
         "email": "encoder@gmail.com",
         "password_hash": "$2y$12$QTex5K3nDnEpB41nIWTGtuZXGzPqFlfF9fBOVWo6D99U/Q5aczcd2",
         "role": "Encoder / Staff",
+        "department": "Finance",
+        "position": "Accounting Encoder",
+        "employment_type": "Regular",
         "active": true
     },
     {
         "id": 4,
+        "employee_code": "EMP-004",
         "name": "Jonard",
         "email": "auditor@gmail.com",
         "password_hash": "$2y$12$QQyPjqSq54a2L6ZRHyuSTeA5XMboy2N2PK30X2k6GRmSKal/kHAjO",
         "role": "Viewer / Auditor",
+        "department": "Internal Audit",
+        "position": "Internal Auditor",
+        "employment_type": "Regular",
         "active": true
     }
 ]

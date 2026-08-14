@@ -10,6 +10,7 @@ import './expenses';
 import './financial-reports';
 import './tax-settings';
 import './audit-trail';
+import './users-settings';
 import './record-details';
 
 const setupSidebarToggle = () => {

@@ -1,0 +1,20 @@
+{
+    "company": {
+        "name": "APM Customs",
+        "legal_name": "Demo Company",
+        "tax_id": "123-456-789-876",
+        "email": "accounting@apm.example",
+        "phone": "09123456789",
+        "address": "Metro Manila, Philippines"
+    },
+    "system": {
+        "fiscal_year_start": 1,
+        "currency": "PHP",
+        "date_format": "Y-m-d",
+        "journal_prefix": "JE",
+        "invoice_prefix": "INV",
+        "bill_prefix": "BILL",
+        "timezone": "Asia/Manila"
+    },
+    "updated_at": "2026-08-13T09:42:31+00:00"
+}

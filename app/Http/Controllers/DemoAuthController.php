@@ -20,9 +20,7 @@ class DemoAuthController extends Controller
             return redirect()->route('dashboard');
         }
 
-        return view('auth.login', [
-            'roles' => $this->roles(),
-        ]);
+        return view('auth.login');
     }
 
     public function login(Request $request): RedirectResponse
@@ -30,20 +28,18 @@ class DemoAuthController extends Controller
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
-            'role' => ['required', 'string'],
         ]);
 
         $user = collect($this->users())->first(
             fn (array $user): bool => strtolower($user['email']) === strtolower($credentials['email'])
-                && $user['role'] === $credentials['role']
                 && $user['active'] === true
                 && password_verify($credentials['password'], $user['password_hash'])
         );
 
         if (! $user) {
             return back()
-                ->withErrors(['email' => 'The email, password, or selected role is incorrect.'])
-                ->onlyInput('email', 'role');
+                ->withErrors(['email' => 'The email or password is incorrect.'])
+                ->onlyInput('email');
         }
 
         $request->session()->regenerate();
@@ -196,14 +192,4 @@ class DemoAuthController extends Controller
         return $users;
     }
 
-    /** @return array<int, string> */
-    private function roles(): array
-    {
-        return collect($this->users())
-            ->where('active', true)
-            ->pluck('role')
-            ->unique()
-            ->values()
-            ->all();
-    }
 }

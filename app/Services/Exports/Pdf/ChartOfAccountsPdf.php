@@ -7,11 +7,11 @@ use DateTimeInterface;
 class ChartOfAccountsPdf extends AccountingPdf
 {
     /** @var array<int, float|int> */
-    private array $widths = [20, 72, 30, 52, 55, 30];
+    private array $widths = [15, 52, 24, 38, 38, 23];
 
     public function __construct(DateTimeInterface $generatedAt)
     {
-        parent::__construct('L', 'Chart of Accounts', $generatedAt);
+        parent::__construct('P', 'Chart of Accounts', $generatedAt);
     }
 
     protected function afterDocumentHeader(): void

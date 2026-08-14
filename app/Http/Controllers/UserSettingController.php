@@ -44,7 +44,7 @@ class UserSettingController extends Controller
         if ($validator->fails()) return $this->invalid($validator->errors()->toArray());
         try {
             $user = $users->create($validator->validated());
-            $audit->record($this->actor($request), 'created', (string) $user['id'], ['before' => null, 'after' => ['name' => $user['name'], 'role' => $user['role'], 'active' => true]], 'user');
+            $audit->record($this->actor($request), 'created', (string) $user['id'], ['before' => 'No previous user record', 'after' => 'User account created'], 'user');
             return response()->json(['message' => 'Demo user created.', 'user' => $this->safe($user)], 201);
         } catch (RuntimeException $e) { return $this->problem($e); }
     }
@@ -64,8 +64,8 @@ class UserSettingController extends Controller
                 $request->session()->put('demo_user', [...$sessionUser, 'name' => $user['name'], 'email' => $user['email']]);
             }
             $audit->record($this->actor($request), 'updated', (string) $id, [
-                'before' => ['name' => $before['name'], 'role' => $before['role']],
-                'after' => ['name' => $user['name'], 'role' => $user['role']],
+                'before' => 'Previous user profile',
+                'after' => 'User profile updated',
             ], 'user');
             return response()->json(['message' => 'Demo user updated.', 'user' => $this->safe($user)]);
         } catch (RuntimeException $e) { return $this->problem($e); }
@@ -106,9 +106,8 @@ class UserSettingController extends Controller
             'phone' => ['nullable', 'string', 'max:40'], 'address' => ['nullable', 'string', 'max:240'],
         ]);
         try {
-            $before = $settings->all()['company'];
             $saved = $settings->update('company', $data);
-            $audit->record($this->actor($request), 'updated_company', 'company', ['before' => $before, 'after' => $saved['company']], 'settings');
+            $audit->record($this->actor($request), 'updated_company', 'company', ['before' => 'Previous company settings', 'after' => 'Company settings updated'], 'settings');
             return response()->json(['message' => 'Company settings saved.', 'settings' => $saved['company']]);
         } catch (RuntimeException $e) { return $this->problem($e); }
     }
@@ -122,9 +121,8 @@ class UserSettingController extends Controller
             'bill_prefix' => ['required', 'alpha_num', 'max:8'], 'timezone' => ['required', Rule::in(['Asia/Manila', 'UTC'])],
         ]);
         try {
-            $before = $settings->all()['system'];
             $saved = $settings->update('system', $data);
-            $audit->record($this->actor($request), 'updated_system', 'system', ['before' => $before, 'after' => $saved['system']], 'settings');
+            $audit->record($this->actor($request), 'updated_system', 'system', ['before' => 'Previous system preferences', 'after' => 'System preferences updated'], 'settings');
             return response()->json(['message' => 'System settings saved.', 'settings' => $saved['system']]);
         } catch (RuntimeException $e) { return $this->problem($e); }
     }

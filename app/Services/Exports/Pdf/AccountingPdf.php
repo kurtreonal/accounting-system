@@ -14,7 +14,7 @@ abstract class AccountingPdf extends Fpdf
     ) {
         parent::__construct($orientation, 'mm', 'A4');
 
-        $this->SetMargins(12, 12, 12);
+        $this->SetMargins(10, 12, 10);
         $this->SetAutoPageBreak(true, 15);
         $this->AliasNbPages();
         $this->SetTitle($documentTitle);

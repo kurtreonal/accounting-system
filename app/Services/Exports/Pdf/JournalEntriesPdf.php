@@ -8,12 +8,12 @@ use Illuminate\Support\Arr;
 class JournalEntriesPdf extends AccountingPdf
 {
     /** @var array<int, float|int> */
-    private array $widths = [34, 24, 74, 34, 34, 28, 28];
+    private array $widths = [24, 18, 50, 25, 24, 26, 23];
 
     /** @param array<string, string> $filters */
     public function __construct(DateTimeInterface $generatedAt, private readonly array $filters = [])
     {
-        parent::__construct('L', 'Journal Entries', $generatedAt);
+        parent::__construct('P', 'Journal Entries', $generatedAt);
     }
 
     protected function afterDocumentHeader(): void

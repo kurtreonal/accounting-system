@@ -52,8 +52,8 @@
                                 str_contains($log['action'], 'delete'), str_contains($log['action'], 'reverse') => 'bg-red-100 text-red-700',
                                 default => 'bg-slate-100 text-slate-700',
                             };
-                            $before = is_array($log['before']) ? json_encode($log['before'], JSON_UNESCAPED_SLASHES) : ($log['before'] ?? '—');
-                            $after = is_array($log['after']) ? json_encode($log['after'], JSON_UNESCAPED_SLASHES) : ($log['after'] ?? '—');
+                            $before = $log['before'] ?? '—';
+                            $after = $log['after'] ?? '—';
                         @endphp
                         <tr data-audit-row class="apm-table-row"><td class="apm-code whitespace-nowrap">{{ $log['created_at_display'] }}</td><td class="font-medium text-slate-800 dark:text-slate-100">{{ $log['actor_name'] }}</td><td>{{ $log['actor_role'] }}</td><td><span class="inline-flex rounded-md px-2 py-1 text-[10px] font-medium {{ $badge }}">{{ $log['action_label'] }}</span></td><td>{{ $log['resource_label'] }}</td><td><button type="button" data-record-detail data-record-resource="{{ $log['resource'] }}" data-record-id="{{ $log['resource_id'] }}" class="apm-code text-blue-600 hover:underline">{{ $log['resource_id'] }}</button></td><td class="max-w-48 truncate" title="{{ $before }}">{{ $before }}</td><td class="max-w-48 truncate text-emerald-600" title="{{ $after }}">{{ $after }}</td></tr>
                     @empty

@@ -6,7 +6,7 @@
     <title>Journal Entry {{ $entry['journal_number'] }}</title>
     @vite(['resources/css/app.css'])
     <style>
-        @page { size: A4 landscape; margin: 10mm; }
+        @page { size: A4 portrait; margin: 10mm; }
         .simple-document table { border-collapse: collapse; }
         .simple-document th,
         .simple-document td { border: 0; border-bottom: 1px solid #d1d5db; }

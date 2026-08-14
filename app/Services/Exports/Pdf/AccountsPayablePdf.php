@@ -7,18 +7,18 @@ use DateTimeInterface;
 class AccountsPayablePdf extends AccountingPdf
 {
     /** @var array<int, float|int> */
-    private array $widths = [30, 24, 24, 55, 32, 32, 32, 26];
+    private array $widths = [27, 18, 18, 35, 24, 21, 27, 20];
 
     /** @param array<string, string> $filters */
     public function __construct(DateTimeInterface $generatedAt, private readonly array $filters)
     {
-        parent::__construct('L', 'Accounts Payable', $generatedAt);
+        parent::__construct('P', 'Accounts Payable', $generatedAt);
     }
 
     protected function afterDocumentHeader(): void
     {
         $this->tableHeader(
-            ['Document', 'Document Date', 'Due Date', 'Payee', 'Amount', 'Paid', 'Balance', 'Status'],
+            ['Document', 'Date', 'Due Date', 'Payee', 'Amount', 'Paid', 'Balance', 'Status'],
             $this->widths,
             ['L', 'L', 'L', 'L', 'R', 'R', 'R', 'L'],
         );

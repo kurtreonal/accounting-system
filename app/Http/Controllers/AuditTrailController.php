@@ -72,10 +72,32 @@ class AuditTrailController extends Controller
                 'resource_label' => Str::headline((string) ($log['resource'] ?? 'System')),
                 'created_date' => $created->toDateString(),
                 'created_at_display' => $created->format('Y-m-d H:i:s'),
-                'before' => $details['before'] ?? null,
-                'after' => $details['after'] ?? null,
+                'before' => self::presentValue($details['before'] ?? null, 'before', $log),
+                'after' => self::presentValue($details['after'] ?? null, 'after', $log),
             ];
         }, $logs);
+    }
+
+    private static function presentValue(mixed $value, string $position, array $log): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        $action = (string) ($log['action'] ?? '');
+        if ($action === 'updated_company') {
+            return $position === 'before' ? 'Previous company settings' : 'Company settings updated';
+        }
+        if ($action === 'updated_system') {
+            return $position === 'before' ? 'Previous system preferences' : 'System preferences updated';
+        }
+
+        $resource = Str::headline((string) ($log['resource'] ?? 'record'));
+        if ($position === 'before') {
+            return str_contains($action, 'create') ? 'No previous record' : 'Previous '.$resource.' details';
+        }
+
+        return str_contains($action, 'create') ? $resource.' created' : $resource.' details updated';
     }
 
     /** @param array<int, array<string, mixed>> $logs

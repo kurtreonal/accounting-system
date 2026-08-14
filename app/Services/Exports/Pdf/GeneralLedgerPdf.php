@@ -7,12 +7,12 @@ use DateTimeInterface;
 class GeneralLedgerPdf extends AccountingPdf
 {
     /** @var array<int, float|int> */
-    private array $widths = [25, 36, 30, 70, 34, 34, 36];
+    private array $widths = [18, 25, 22, 50, 24, 24, 27];
 
     /** @param array<string, mixed> $report */
     public function __construct(DateTimeInterface $generatedAt, private readonly array $report)
     {
-        parent::__construct('L', 'General Ledger', $generatedAt);
+        parent::__construct('P', 'General Ledger', $generatedAt);
     }
 
     protected function afterDocumentHeader(): void
